@@ -1,0 +1,16 @@
+[
+  {
+    "username": "felemonfawzy@admin.com",
+    "title": "admin",
+    "password": "theAdminFelemonFawzy"
+  },
+  {
+    "username": "markus mina",
+    "password": "markmina1234",
+    "email": "markboss726@gmail.com",
+    "title": "student",
+    "parentNumber": "01009262877",
+    "grade": "10", 
+    "id": 1
+  }
+]
