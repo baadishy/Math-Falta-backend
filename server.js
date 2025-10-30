@@ -254,6 +254,7 @@ let users = [
       },
     ],
     totalScore: 9,
+    parentNumber: '01009262877'
   },
   {
     title: "student",
@@ -323,6 +324,7 @@ let users = [
       },
     ],
     totalScore: 2,
+    parentNumber: '01009262877'
   },
 ];
 
@@ -380,8 +382,8 @@ function filterUsers() {
     });
     return users
       .map((user) => {
-        let { title, username, grade, email, quizzes, totalScore } = user;
-        return { title, username, grade, email, quizzes, totalScore };
+        let { title, username, grade, email, quizzes, totalScore, parentNumber } = user;
+        return { title, username, grade, email, quizzes, totalScore, parentNumber };
       })
       .filter((user) => user.title !== "admin");
   } catch (err) {
