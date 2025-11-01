@@ -151,8 +151,8 @@ app.get("/api/user/:id", async (req, res) => {
       (acc, current) => acc + current.score,
       0
     );
-    let { title, grade, totalScore, email, username, quizzes } = user;
-    user = { title, grade, totalScore, email, username, quizzes };
+    let { title, grade, totalScore, email, username, quizzes, parentNumber } = user;
+    user = { title, grade, totalScore, email, username, quizzes, parentNumber };
     res.status(200).json({ success: true, data: user });
   } catch (err) {
     return res.status(400).json({ success: false, err: err });
