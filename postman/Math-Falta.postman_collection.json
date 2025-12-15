@@ -1,0 +1,772 @@
+{
+  "info": {
+    "_postman_id": "math-falta-collection-001",
+    "name": "Math-Falta API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Postman collection for Math-Falta backend (Auth, Users, Quizzes, Lessons, Admin).\n\nVariable `base_url` default: http://localhost:3000 ; change to your server URL.\nAfter Sign In run the Tests to capture the `token` cookie into environment variable `auth_cookie` which is used by authenticated requests via the Cookie header."
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "auth_cookie",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Sign Up",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Aya Mohamed\",\n  \"email\": \"aya@example.com\",\n  \"password\": \"secret123\",\n  \"parentNumber\": \"01012345678\",\n  \"grade\": \"5\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/sign-up",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "sign-up"]
+            }
+          },
+          "response": [
+            {
+              "name": "201 Created - sample",
+              "originalRequest": {},
+              "status": "Created",
+              "code": 201,
+              "_body": "{\n  \"success\": true,\n  \"msg\": \"User created successfully\",\n  \"data\": { /* user object (password hashed) */ }\n}",
+              "header": []
+            }
+          ]
+        },
+        {
+          "name": "Sign In",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Capture Set-Cookie header and store token cookie into environment variable 'auth_cookie'",
+                  "var setCookie = pm.response.headers.get('set-cookie');",
+                  "if (setCookie) {",
+                  "  var tokenPart = setCookie.split(';')[0]; // token=...",
+                  "  pm.environment.set('auth_cookie', tokenPart);",
+                  "  pm.test('auth_cookie set', function () { pm.expect(tokenPart).to.include('token='); });",
+                  "} else {",
+                  "  pm.test('set-cookie header present', function () { pm.expect(setCookie).to.not.be.undefined; });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"aya@example.com\",\n  \"password\": \"secret123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/sign-in",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "sign-in"]
+            }
+          },
+          "response": [
+            {
+              "name": "200 OK - sample",
+              "status": "OK",
+              "code": 200,
+              "_body": "{\n  \"success\": true,\n  \"msg\": \"User signed in successfully\",\n  \"data\": { /* user object */ }\n}",
+              "header": [
+                {
+                  "key": "Set-Cookie",
+                  "value": "token=<JWT>; HttpOnly; Path=/; Max-Age=..."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Get Leaderboard",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Cookie", "value": "{{auth_cookie}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/users/leaderboard",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "leaderboard"]
+            }
+          },
+          "response": [
+            {
+              "name": "200",
+              "code": 200,
+              "_body": "{\n  \"success\": true,\n  \"data\": [ { \"name\": \"...\", \"grade\": \"7\", \"quizzes\": [], \"totalScore\": 10 } ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Me",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Cookie", "value": "{{auth_cookie}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/users/me",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "me"]
+            }
+          },
+          "response": [
+            {
+              "name": "200",
+              "code": 200,
+              "_body": "{ \"success\": true, \"data\": { /* user + quizzes + totalScore */ } }"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Lessons",
+      "item": [
+        {
+          "name": "Get Lessons (for user grade)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Cookie", "value": "{{auth_cookie}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/lessons",
+              "host": ["{{base_url}}"],
+              "path": ["api", "lessons"]
+            }
+          },
+          "response": [
+            {
+              "name": "200",
+              "code": 200,
+              "_body": "{ \"success\": true, \"data\": [ /* lessons */ ] }"
+            }
+          ]
+        },
+        {
+          "name": "Get Lesson by ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Cookie", "value": "{{auth_cookie}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/lessons/:id",
+              "host": ["{{base_url}}"],
+              "path": ["api", "lessons", ":id"]
+            }
+          },
+          "response": [
+            {
+              "name": "200",
+              "code": 200,
+              "_body": "{ \"success\": true, \"data\": { /* lesson */ } }"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Quizzes",
+      "item": [
+        {
+          "name": "Get Quiz by ID (no answers)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Cookie", "value": "{{auth_cookie}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/quizzes/:id",
+              "host": ["{{base_url}}"],
+              "path": ["api", "quizzes", ":id"]
+            }
+          },
+          "response": [
+            {
+              "name": "200",
+              "code": 200,
+              "_body": "{ \"success\": true, \"data\": { /* quiz without answers */ } }"
+            }
+          ]
+        },
+        {
+          "name": "Get Topics by Grade",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Cookie", "value": "{{auth_cookie}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/quizzes/topics/5",
+              "host": ["{{base_url}}"],
+              "path": ["api", "quizzes", "topics", "5"]
+            }
+          },
+          "response": [
+            {
+              "name": "200",
+              "code": 200,
+              "_body": "{ \"success\": true, \"data\": [\"Fraction basics\"] }"
+            }
+          ]
+        },
+        {
+          "name": "Submit Quiz Answers",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Cookie", "value": "{{auth_cookie}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"_id\": \"<quizId>\",\n  \"topic\": \"Fraction basics\",\n  \"questions\": [ { \"questionId\": \"<qId>\", \"userAnswer\": \"A\" } ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/quizzes/answers",
+              "host": ["{{base_url}}"],
+              "path": ["api", "quizzes", "answers"]
+            }
+          },
+          "response": [
+            {
+              "name": "201",
+              "code": 201,
+              "_body": "{ \"success\": true, \"data\": { /* created quiz answers */ } }"
+            }
+          ]
+        },
+        {
+          "name": "Get My Quiz Answers by quizAnswersId",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Cookie", "value": "{{auth_cookie}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/quizzes/answers/:quizAnswersId",
+              "host": ["{{base_url}}"],
+              "path": ["api", "quizzes", "answers", ":quizAnswersId"]
+            }
+          },
+          "response": [
+            {
+              "name": "200",
+              "code": 200,
+              "_body": "{ \"success\": true, \"data\": { /* merged quiz + user answers */ } }"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "item": [
+        {
+          "name": "Quizzes (admin)",
+          "item": [
+            {
+              "name": "Get All Quizzes",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Cookie", "value": "{{auth_cookie}}" }],
+                "url": {
+                  "raw": "{{base_url}}/api/admin/quizzes",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "admin", "quizzes"]
+                }
+              }
+            },
+            {
+              "name": "Get Quiz by ID",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Cookie", "value": "{{auth_cookie}}" }],
+                "url": {
+                  "raw": "{{base_url}}/api/admin/quizzes/:id",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "admin", "quizzes", ":id"]
+                }
+              }
+            },
+            {
+              "name": "Get Deleted (trash) Quizzes",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Cookie", "value": "{{auth_cookie}}" }],
+                "url": {
+                  "raw": "{{base_url}}/api/admin/quizzes/trash",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "admin", "quizzes", "trash"]
+                }
+              }
+            },
+            {
+              "name": "Create Quiz (multipart)",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Cookie", "value": "{{auth_cookie}}" }],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "topic",
+                      "value": "Fraction basics",
+                      "type": "text"
+                    },
+                    { "key": "grade", "value": "6", "type": "text" },
+                    {
+                      "key": "questions",
+                      "value": "[{\"question\":\"What is 1/2 + 1/3?\",\"options\":[\"5/6\",\"2/3\",\"3/4\",\"7/6\"],\"answer\":\"A\"}]",
+                      "type": "text"
+                    },
+                    { "key": "image0", "type": "file" }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/admin/quizzes",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "admin", "quizzes"]
+                }
+              }
+            },
+            {
+              "name": "Update Quiz (topic/grade)",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Cookie", "value": "{{auth_cookie}}" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{ \"topic\": \"Updated topic\", \"grade\": \"7\" }"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/admin/quizzes/:id",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "admin", "quizzes", ":id"]
+                }
+              }
+            },
+            {
+              "name": "Add Questions to Quiz (multipart)",
+              "request": {
+                "method": "PUT",
+                "header": [{ "key": "Cookie", "value": "{{auth_cookie}}" }],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "questions",
+                      "value": "[{\"question\":\"New question?\",\"options\":[\"a\",\"b\",\"c\",\"d\"],\"answer\":\"A\"}]",
+                      "type": "text"
+                    },
+                    { "key": "image0", "type": "file" }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/admin/quizzes/:id/questions/add",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "admin", "quizzes", ":id", "questions", "add"]
+                }
+              }
+            },
+            {
+              "name": "Update Single Question (multipart)",
+              "request": {
+                "method": "PUT",
+                "header": [{ "key": "Cookie", "value": "{{auth_cookie}}" }],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "question",
+                      "value": "Edited question text",
+                      "type": "text"
+                    },
+                    {
+                      "key": "options",
+                      "value": "[\"a\",\"b\",\"c\",\"d\"]",
+                      "type": "text"
+                    },
+                    { "key": "answer", "value": "B", "type": "text" },
+                    { "key": "image", "type": "file" }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/admin/quizzes/:quizId/questions/:questionId",
+                  "host": ["{{base_url}}"],
+                  "path": [
+                    "api",
+                    "admin",
+                    "quizzes",
+                    ":quizId",
+                    "questions",
+                    ":questionId"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Delete Single Question",
+              "request": {
+                "method": "DELETE",
+                "header": [{ "key": "Cookie", "value": "{{auth_cookie}}" }],
+                "url": {
+                  "raw": "{{base_url}}/api/admin/quizzes/:quizId/questions/:questionId",
+                  "host": ["{{base_url}}"],
+                  "path": [
+                    "api",
+                    "admin",
+                    "quizzes",
+                    ":quizId",
+                    "questions",
+                    ":questionId"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Soft Delete Quiz (trash)",
+              "request": {
+                "method": "PUT",
+                "header": [{ "key": "Cookie", "value": "{{auth_cookie}}" }],
+                "url": {
+                  "raw": "{{base_url}}/api/admin/quizzes/:id/delete",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "admin", "quizzes", ":id", "delete"]
+                }
+              }
+            },
+            {
+              "name": "Restore Quiz",
+              "request": {
+                "method": "PUT",
+                "header": [{ "key": "Cookie", "value": "{{auth_cookie}}" }],
+                "url": {
+                  "raw": "{{base_url}}/api/admin/quizzes/:id/restore",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "admin", "quizzes", ":id", "restore"]
+                }
+              }
+            },
+            {
+              "name": "Delete Quiz (permanent)",
+              "request": {
+                "method": "DELETE",
+                "header": [{ "key": "Cookie", "value": "{{auth_cookie}}" }],
+                "url": {
+                  "raw": "{{base_url}}/api/admin/quizzes/:id",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "admin", "quizzes", ":id"]
+                }
+              }
+            },
+            {
+              "name": "Get Quiz Answers (by quizAnswersId & user)",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Cookie", "value": "{{auth_cookie}}" }],
+                "url": {
+                  "raw": "{{base_url}}/api/admin/quizzes/answers/:quizAnswersId/:id",
+                  "host": ["{{base_url}}"],
+                  "path": [
+                    "api",
+                    "admin",
+                    "quizzes",
+                    "answers",
+                    ":quizAnswersId",
+                    ":id"
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Lessons (admin)",
+          "item": [
+            {
+              "name": "Get All Lessons",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Cookie", "value": "{{auth_cookie}}" }],
+                "url": {
+                  "raw": "{{base_url}}/api/admin/lessons",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "admin", "lessons"]
+                }
+              }
+            },
+            {
+              "name": "Get Lesson by ID",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Cookie", "value": "{{auth_cookie}}" }],
+                "url": {
+                  "raw": "{{base_url}}/api/admin/lessons/:id",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "admin", "lessons", ":id"]
+                }
+              }
+            },
+            {
+              "name": "Create Lesson (multipart docs)",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Cookie", "value": "{{auth_cookie}}" }],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "title",
+                      "value": "Decimals - intro",
+                      "type": "text"
+                    },
+                    { "key": "grade", "value": "5", "type": "text" },
+                    { "key": "topic", "value": "Decimals", "type": "text" },
+                    {
+                      "key": "video",
+                      "value": "https://youtube.com/...",
+                      "type": "text"
+                    },
+                    { "key": "docs0", "type": "file" }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/admin/lessons",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "admin", "lessons"]
+                }
+              }
+            },
+            {
+              "name": "Update Lesson",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Cookie", "value": "{{auth_cookie}}" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{ \"title\": \"Updated title\", \"video\": \"https://...\" }"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/admin/lessons/:id",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "admin", "lessons", ":id"]
+                }
+              }
+            },
+            {
+              "name": "Get Deleted Lessons (trash)",
+              "request": {
+                "method": "PUT",
+                "header": [{ "key": "Cookie", "value": "{{auth_cookie}}" }],
+                "url": {
+                  "raw": "{{base_url}}/api/admin/lessons/trash",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "admin", "lessons", "trash"]
+                }
+              }
+            },
+            {
+              "name": "Add Lesson Docs (multipart)",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Cookie", "value": "{{auth_cookie}}" }],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    { "key": "docs0", "type": "file" },
+                    { "key": "label0", "type": "text", "value": "Notes" }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/admin/lessons/:id/docs",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "admin", "lessons", ":id", "docs"]
+                }
+              }
+            },
+            {
+              "name": "Delete Lesson Doc",
+              "request": {
+                "method": "DELETE",
+                "header": [{ "key": "Cookie", "value": "{{auth_cookie}}" }],
+                "url": {
+                  "raw": "{{base_url}}/api/admin/lessons/:lessonId/docs/:docId",
+                  "host": ["{{base_url}}"],
+                  "path": [
+                    "api",
+                    "admin",
+                    "lessons",
+                    ":lessonId",
+                    "docs",
+                    ":docId"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Update Lesson Doc Label",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Cookie", "value": "{{auth_cookie}}" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{ \"label\": \"Updated Label\" }"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/admin/lessons/:lessonId/docs/:docId",
+                  "host": ["{{base_url}}"],
+                  "path": [
+                    "api",
+                    "admin",
+                    "lessons",
+                    ":lessonId",
+                    "docs",
+                    ":docId"
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Restore Lesson",
+              "request": {
+                "method": "PUT",
+                "header": [{ "key": "Cookie", "value": "{{auth_cookie}}" }],
+                "url": {
+                  "raw": "{{base_url}}/api/admin/lessons/:id/restore",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "admin", "lessons", ":id", "restore"]
+                }
+              }
+            },
+            {
+              "name": "Soft Delete Lesson",
+              "request": {
+                "method": "PUT",
+                "header": [{ "key": "Cookie", "value": "{{auth_cookie}}" }],
+                "url": {
+                  "raw": "{{base_url}}/api/admin/lessons/:id/delete",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "admin", "lessons", ":id", "delete"]
+                }
+              }
+            },
+            {
+              "name": "Delete Lesson (permanent)",
+              "request": {
+                "method": "DELETE",
+                "header": [{ "key": "Cookie", "value": "{{auth_cookie}}" }],
+                "url": {
+                  "raw": "{{base_url}}/api/admin/lessons/:id",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "admin", "lessons", ":id"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Users (admin)",
+          "item": [
+            {
+              "name": "Get All Users",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Cookie", "value": "{{auth_cookie}}" }],
+                "url": {
+                  "raw": "{{base_url}}/api/admin/users",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "admin", "users"]
+                }
+              }
+            },
+            {
+              "name": "Get User by ID",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Cookie", "value": "{{auth_cookie}}" }],
+                "url": {
+                  "raw": "{{base_url}}/api/admin/users/:id",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "admin", "users", ":id"]
+                }
+              }
+            },
+            {
+              "name": "Create Admin User",
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Cookie", "value": "{{auth_cookie}}" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{ \"name\": \"Admin Name\", \"email\": \"admin@example.com\", \"password\": \"adminpass\", \"parentNumber\": \"01011112222\", \"grade\": \"5\" }"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/admin/users",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "admin", "users"]
+                }
+              }
+            },
+            {
+              "name": "Update User",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Cookie", "value": "{{auth_cookie}}" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{ \"name\": \"Updated Name\" }"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/admin/users/:id",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "admin", "users", ":id"]
+                }
+              }
+            },
+            {
+              "name": "Delete User",
+              "request": {
+                "method": "DELETE",
+                "header": [{ "key": "Cookie", "value": "{{auth_cookie}}" }],
+                "url": {
+                  "raw": "{{base_url}}/api/admin/users/:id",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "admin", "users", ":id"]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
