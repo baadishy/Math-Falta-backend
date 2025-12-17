@@ -32,7 +32,7 @@ const getLessonById = async (req, res, next) => {
       });
     }
 
-    const lesson = await Lessons.find({ _id: id, isDeleted: false });
+    const lesson = await Lessons.findOne({ _id: id, isDeleted: false });
 
     if (!lesson) {
       return res.status(404).json({
@@ -98,7 +98,7 @@ const updateLessonById = async (req, res, next) => {
     const { id } = req.params;
     const { title, topic, grade, video } = req.body;
 
-    const lesson = await Lessons.find({ _id: id, isDeleted: false });
+    const lesson = await Lessons.findOne({ _id: id, isDeleted: false });
     if (!lesson) {
       return res.status(404).json({
         success: false,
@@ -163,7 +163,7 @@ const deleteLessonDoc = async (req, res, next) => {
   try {
     const { lessonId, docId } = req.params;
 
-    const lesson = await Lessons.find({ _id: lessonId, isDeleted: false });
+    const lesson = await Lessons.findOne({ _id: lessonId, isDeleted: false });
     if (!lesson) {
       return res.status(404).json({
         success: false,
@@ -183,7 +183,7 @@ const deleteLessonDoc = async (req, res, next) => {
       resource_type: "raw",
     });
 
-    doc.deleteOne();
+    await doc.remove();
     await lesson.save();
 
     res.status(200).json({
@@ -257,7 +257,7 @@ const softDeleteLessonById = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    const lesson = await Lessons.find({ _id: id, isDeleted: false });
+    const lesson = await Lessons.findOne({ _id: id, isDeleted: false });
     if (!lesson) {
       return res.status(404).json({
         success: false,

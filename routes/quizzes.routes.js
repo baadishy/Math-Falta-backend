@@ -1,23 +1,23 @@
 const { Router } = require("express");
 const router = Router();
-const fs = require("fs").promises;
-const Quizzes = require("../models/quizzes.model");
 const {
-  getTopicsByGrade,
+  getTitlesByGrade,
   getQuizByQuizId,
   getQuizAnswersByQuizId,
-  addQuizAnswersByUserId
+  addQuizAnswersByUserId,
+  getQuizzesResultsByUserId,
 } = require("../controllers/quizzes.controllers");
-const authMiddleware = require('../middlewares/auth.middleware.js')
+const authMiddleware = require("../middlewares/auth.middleware.js");
 
-router.use(authMiddleware)
+router.use(authMiddleware);
 
-router.get("/:id", getQuizByQuizId);
-
-router.get("/topics/:grade", getTopicsByGrade);
-
+// Specific routes first to avoid being shadowed by the parameterized route
+router.get("/titles", getTitlesByGrade);
+router.get("/answers", getQuizzesResultsByUserId);
 router.get("/answers/:quizAnswersId", getQuizAnswersByQuizId);
-
 router.post("/answers", addQuizAnswersByUserId);
+
+// Parameterized route should come last
+router.get("/:id", getQuizByQuizId);
 
 module.exports = router;

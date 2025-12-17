@@ -66,7 +66,7 @@ Collection: `quizzes`
 
 Fields:
 
-- topic: string (required)
+- title: string (required)
 - grade: string (required) one of 5-9
 - questions: array of question subdocuments (required). Each question contains:
   - \_id: ObjectId (auto)
@@ -81,7 +81,7 @@ Fields:
 Example quiz document:
 {
 "\_id": "64c83...",
-"topic": "Fraction basics",
+"title": "Fraction basics",
 "grade": "6",
 "questions": [
 {
@@ -114,7 +114,7 @@ Collection: `quizzesanswers`
 Fields:
 
 - quizId: ObjectId (ref Quizzes) required
-- topic: string required
+- title: string required
 - userId: ObjectId (ref Users) required
 - score: number (computed, default 0)
 - questions: array of answered question objects:
@@ -127,7 +127,7 @@ Example stored answers document (created when a user submits answers):
 {
 "\_id": "64d0a...",
 "quizId": "64c83...",
-"topic": "Fraction basics",
+"title": "Fraction basics",
 "userId": "64b7f...",
 "score": 1,
 "questions": [
@@ -232,13 +232,13 @@ All these routes use `auth.middleware` which expects the JWT cookie.
 
 - Description: Returns list of users with their quizzes and computed `totalScore` (aggregation over `quizzesanswers`).
 - Response 200:
-  { "success": true, "data": [ { "name": "...", "grade": "7", "quizzes": [ { topic, score } ], "totalScore": 10 }, ... ] }
+  { "success": true, "data": [ { "name": "...", "grade": "7", "quizzes": [ { title, score } ], "totalScore": 10 }, ... ] }
 
 2. GET /api/users/me
 
 - Description: Returns the authenticated user's profile plus quizzes and computed totalScore.
 - Response 200:
-  { "success": true, "data": { "username": "...", "grade": "7", "totalScore": 5, "parentNumber": "...", "email": "...", "quizzes": [ { topic, _id } ] } }
+  { "success": true, "data": { "username": "...", "grade": "7", "totalScore": 5, "parentNumber": "...", "email": "...", "quizzes": [ { title, _id } ] } }
 - Error 404 if user not found.
 
 3. PUT /api/users/me
@@ -275,26 +275,32 @@ Base: /api/quizzes
 - Response 200: { success: true, data: quiz }
 - Errors: 400 missing id, 403 forbidden, 404 not found.
 
-2. GET /api/quizzes/topics/:grade
+2. GET /api/quizzes/titles
 
-- Description: Returns topics available for the authenticated user's grade (controller uses req.user.grade, route includes :grade but controller ignores param and uses user grade).
-- Response 200: { success: true, data: ["Topic A", "Topic B"] }
+- Description: Returns quiz titles available for the authenticated user's grade (controller uses req.user.grade).
+- Response 200: { success: true, data: ["Title A", "Title B"] }
 - Errors: 404 if none found.
 
-3. GET /api/quizzes/answers/:quizAnswersId
+3. GET /api/quizzes/answers
+
+- Description: Lists the authenticated user's quiz results (score, title, date). Useful for a "My quizzes" or results view.
+- Response 200: { success: true, data: [ { "_id": "<quizAnswersId>", "score": 3, "title": "Fraction basics", "createdAt": "..." }, ... ] }
+- Errors: 404 if none found.
+
+4. GET /api/quizzes/answers/:quizAnswersId
 
 - Description: Returns a user's submitted answers by `quizAnswersId` (requires user to own the answers). Response contains merged original questions with userAnswer and isCorrect.
 - Response 200:
-  { success: true, data: { quizId, topic, userId, score, questions: [ { questionId, question, options, answer, userAnswer, isCorrect } ] } }
+  { success: true, data: { quizId, title, userId, score, questions: [ { questionId, question, options, answer, userAnswer, isCorrect } ] } }
 - Errors: 400, 404
 
-4. POST /api/quizzes/answers
+5. POST /api/quizzes/answers
 
 - Description: Submit a quiz answers document for the current user. The request body should be the quizAnswers object (matching QuizzesAnswers schema) — the controller expects a body with quizId (or \_id) and questions array.
 - Body example:
   {
   "\_id": "<quizId>",
-  "topic": "Fraction basics",
+  "title": "Fraction basics",
   "questions": [ { "questionId": "<qId>", "userAnswer": "A" }, ... ]
   }
 - Controller behavior: It sets `quizAnswers.quizId = quizAnswers._id`, sets `userId` from the authenticated user, deletes the incoming `_id` and `__v`, and creates a QuizzesAnswers document. `pre('save')` computes score.
@@ -331,7 +337,7 @@ Note: All admin endpoints apply `auth.middleware` and `admin.middleware`.
 
 - Create a quiz. Multipart/form-data for images is supported.
 - Fields:
-  - `topic` (string)
+  - `title` (string)
   - `grade` (string 5-9)
   - `questions` (stringified JSON array) — Example: `[ { "question": "...", "options": ["opt1","opt2","opt3","opt4"], "answer": "A" }, ... ]`
   - Image fields optional: `image0`, `image1`, ... files corresponding to question indexes.
@@ -339,7 +345,7 @@ Note: All admin endpoints apply `auth.middleware` and `admin.middleware`.
 
 6. PUT /api/admin/quizzes/:id
 
-- Update quiz fields (topic, grade) with JSON body.
+- Update quiz fields (title, grade) with JSON body.
 
 7. PUT /api/admin/quizzes/:id/questions/add
 
@@ -428,7 +434,7 @@ Cookie: `token` httpOnly set in response.
 Request JSON (client should build this using the quiz data shown to user):
 {
 "\_id": "64c83...", // quiz id (controller will move this into quizId)
-"topic": "Fraction basics",
+"title": "Fraction basics",
 "questions": [
 { "questionId": "64c83q1...", "userAnswer": "A" },
 { "questionId": "64c83q2...", "userAnswer": "B" }
@@ -441,7 +447,7 @@ Example success response (201):
 "data": {
 "\_id": "64d0a...",
 "quizId": "64c83...",
-"topic": "Fraction basics",
+"title": "Fraction basics",
 "userId": "64b7f...",
 "score": 1,
 "questions": [ { "questionId": "64c83q1...", "userAnswer": "A", "isCorrect": true }, ... ]
@@ -455,7 +461,7 @@ Response 200 example:
 "success": true,
 "data": {
 "quizId": "64c83...",
-"topic": "Fraction basics",
+"title": "Fraction basics",
 "userId": "64b7f...",
 "score": 1,
 "questions": [
@@ -498,7 +504,8 @@ npm run dev  # or npm start
 ## Notes, tips & caveats
 
 - The `PUT /api/users/me` controller is a stub and currently unimplemented.
-- The `GET /api/quizzes/topics/:grade` route's controller uses `req.user.grade` instead of the route param; prefer using authenticated grade only.
+- Updated: Quizzes now use `title` (not `topic`) and there is a new `GET /api/quizzes/answers` route that lists the authenticated user's quiz results.
+- The `GET /api/quizzes/titles` route returns titles for the authenticated user's grade (it uses `req.user.grade`).
 - Admin create/update quiz endpoints accept `questions` as a JSON-stringified array together with file uploads; make sure the client constructs the multipart body correctly and uses fields named `image0`, `image1`, ... for question images.
 - When creating `Quizzes` with image questions, the model's pre-save hook enforces that options are formatted and answer is one of `A,B,C,D`.
 - `QuizzesAnswers` pre-save computes the `score` automatically.

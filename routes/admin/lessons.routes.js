@@ -22,10 +22,11 @@ router.use(authMiddleware, adminMiddleware);
 
 /* ================= LESSON ROUTES ================= */
 router.get("/", getAllLessons); // Get all lessons
-router.get("/:id", getLessonById); // Get lesson by ID
 router.post("/", uploadDocs, createLesson); // Create lesson
-router.put("/:id", updateLessonById); // Update lesson fields (text/video)
-router.put('/trash', getDeletedLessons); // Get all soft-deleted lessons
+// Static trash route before parameterized routes to avoid being matched by "/:id"
+router.put("/trash", getDeletedLessons); // Get all soft-deleted lessons
+router.get("/:id", getLessonById); // Get lesson by ID
+router.put(":id", updateLessonById); // Update lesson fields (text/video)
 
 /* ================= DOCS PARTIAL ROUTES ================= */
 router.post("/:id/docs", uploadDocs, addLessonDocs); // Add new docs

@@ -5,7 +5,9 @@ const cloudinary = require("../../config/cloudinary");
 /* ================= GET ALL ================= */
 const getAllQuizzes = async (req, res, next) => {
   try {
-    const quizzes = await Quizzes.find({ isDeleted: false });
+    const quizzes = await Quizzes.find({ isDeleted: false }).select(
+      "title grade"
+    );
     res.status(200).json({ success: true, data: quizzes });
   } catch (error) {
     next(error);
@@ -30,7 +32,7 @@ const getQuizById = async (req, res, next) => {
         .status(400)
         .json({ success: false, message: "Quiz ID is required" });
 
-    const quiz = await Quizzes.find({ _id: id, isDeleted: false });
+    const quiz = await Quizzes.findOne({ _id: id, isDeleted: false });
     if (!quiz)
       return res
         .status(404)
@@ -85,7 +87,7 @@ const getQuizAnswersById = async (req, res, next) => {
 /* ================= CREATE QUIZ ================= */
 const createQuiz = async (req, res, next) => {
   try {
-    const { topic, grade, questions } = req.body;
+    const { title, grade, questions } = req.body;
     const imagesFiles = req.files;
 
     const parsedQuestions = JSON.parse(questions);
@@ -108,7 +110,7 @@ const createQuiz = async (req, res, next) => {
       };
     });
 
-    const quiz = new Quizzes({ topic, grade, questions: questionsData });
+    const quiz = new Quizzes({ title, grade, questions: questionsData });
     await quiz.save();
 
     res.status(201).json({ success: true, data: quiz });
@@ -121,15 +123,15 @@ const createQuiz = async (req, res, next) => {
 const updateQuizById = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { topic, grade } = req.body;
+    const { title, grade } = req.body;
 
-    const quiz = await Quizzes.findById({_id: id, isDeleted: false});
+    const quiz = await Quizzes.findOne({ _id: id, isDeleted: false });
     if (!quiz)
       return res
         .status(404)
         .json({ success: false, message: "Quiz not found" });
 
-    if (topic) quiz.topic = topic;
+    if (title) quiz.title = title;
     if (grade) quiz.grade = grade;
 
     await quiz.save();
@@ -146,7 +148,7 @@ const addQuizQuestions = async (req, res, next) => {
     const { questions } = req.body;
     const imagesFiles = req.files;
 
-    const quiz = await Quizzes.find({ _id: id, isDeleted: false });
+    const quiz = await Quizzes.findOne({ _id: id, isDeleted: false });
     if (!quiz)
       return res
         .status(404)
@@ -188,7 +190,7 @@ const updateQuizQuestion = async (req, res, next) => {
     const { question, options, answer } = req.body;
     const file = req.files?.image?.[0];
 
-    const quiz = await Quizzes.find({ _id: quizId, isDeleted: false });
+    const quiz = await Quizzes.findOne({ _id: quizId, isDeleted: false });
     if (!quiz)
       return res
         .status(404)
@@ -226,7 +228,7 @@ const deleteQuizQuestion = async (req, res, next) => {
   try {
     const { quizId, questionId } = req.params;
 
-    const quiz = await Quizzes.find({ _id: quizId, isDeleted: false });
+    const quiz = await Quizzes.findOne({ _id: quizId, isDeleted: false });
     if (!quiz)
       return res
         .status(404)
@@ -242,7 +244,7 @@ const deleteQuizQuestion = async (req, res, next) => {
       await cloudinary.uploader.destroy(q.image.publicId);
     }
 
-    q.deleteOne();
+    await q.remove();
     await quiz.save();
 
     res.status(200).json({ success: true, message: "Question deleted" });
@@ -279,7 +281,7 @@ const softDeleteQuizById = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    const quiz = await Quizzes.find({ _id: id, isDeleted: false });
+    const quiz = await Quizzes.findOne({ _id: id, isDeleted: false });
     if (!quiz) {
       return res.status(404).json({
         success: false,
@@ -311,7 +313,7 @@ const restoreQuizById = async (req, res, next) => {
         .json({ success: false, message: "Quiz ID is required" });
     }
 
-    const quiz = await Quizzes.find({ _id: id, isDeleted: true });
+    const quiz = await Quizzes.findOne({ _id: id, isDeleted: true });
     if (!quiz) {
       return res
         .status(404)
@@ -352,5 +354,5 @@ module.exports = {
   deleteQuizById,
   softDeleteQuizById,
   restoreQuizById,
-  getDeletedQuizzes
+  getDeletedQuizzes,
 };

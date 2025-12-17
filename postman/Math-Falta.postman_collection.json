@@ -3,7 +3,7 @@
     "_postman_id": "math-falta-collection-001",
     "name": "Math-Falta API",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "Postman collection for Math-Falta backend (Auth, Users, Quizzes, Lessons, Admin).\n\nVariable `base_url` default: http://localhost:3000 ; change to your server URL.\nAfter Sign In run the Tests to capture the `token` cookie into environment variable `auth_cookie` which is used by authenticated requests via the Cookie header."
+    "description": "Postman collection for Math-Falta backend (Auth, Users, Quizzes, Lessons, Admin).\n\nVariable `base_url` default: http://localhost:3000 ; change to your server URL.\nAfter Sign In run the Tests to capture the `token` cookie into environment variable `auth_cookie` which is used by authenticated requests via the Cookie header. Note: updated endpoints include `GET /api/quizzes/titles` and `GET /api/quizzes/answers` (list user results)."
   },
   "variable": [
     {
@@ -207,14 +207,14 @@
           ]
         },
         {
-          "name": "Get Topics by Grade",
+          "name": "Get Titles by Grade",
           "request": {
             "method": "GET",
             "header": [{ "key": "Cookie", "value": "{{auth_cookie}}" }],
             "url": {
-              "raw": "{{base_url}}/api/quizzes/topics/5",
+              "raw": "{{base_url}}/api/quizzes/titles",
               "host": ["{{base_url}}"],
-              "path": ["api", "quizzes", "topics", "5"]
+              "path": ["api", "quizzes", "titles"]
             }
           },
           "response": [
@@ -222,6 +222,25 @@
               "name": "200",
               "code": 200,
               "_body": "{ \"success\": true, \"data\": [\"Fraction basics\"] }"
+            }
+          ]
+        },
+        {
+          "name": "Get My Quiz Results",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Cookie", "value": "{{auth_cookie}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/quizzes/answers",
+              "host": ["{{base_url}}"],
+              "path": ["api", "quizzes", "answers"]
+            }
+          },
+          "response": [
+            {
+              "name": "200",
+              "code": 200,
+              "_body": "{ \"success\": true, \"data\": [ { \"_id\": \"64d0a...\", \"score\": 2, \"title\": \"Fraction basics\", \"createdAt\": \"...\" } ] }"
             }
           ]
         },
@@ -235,7 +254,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"_id\": \"<quizId>\",\n  \"topic\": \"Fraction basics\",\n  \"questions\": [ { \"questionId\": \"<qId>\", \"userAnswer\": \"A\" } ]\n}"
+              "raw": "{\n  \"_id\": \"<quizId>\",\n  \"title\": \"Fraction basics\",\n  \"questions\": [ { \"questionId\": \"<qId>\", \"userAnswer\": \"A\" } ]\n}"
             },
             "url": {
               "raw": "{{base_url}}/api/quizzes/answers",
@@ -323,7 +342,7 @@
                   "mode": "formdata",
                   "formdata": [
                     {
-                      "key": "topic",
+                      "key": "title",
                       "value": "Fraction basics",
                       "type": "text"
                     },
@@ -344,7 +363,7 @@
               }
             },
             {
-              "name": "Update Quiz (topic/grade)",
+              "name": "Update Quiz (title/grade)",
               "request": {
                 "method": "PUT",
                 "header": [
@@ -353,7 +372,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{ \"topic\": \"Updated topic\", \"grade\": \"7\" }"
+                  "raw": "{ \"title\": \"Updated title\", \"grade\": \"7\" }"
                 },
                 "url": {
                   "raw": "{{base_url}}/api/admin/quizzes/:id",
@@ -538,7 +557,7 @@
                       "type": "text"
                     },
                     { "key": "grade", "value": "5", "type": "text" },
-                    { "key": "topic", "value": "Decimals", "type": "text" },
+                    { "key": "title", "value": "Decimals", "type": "text" },
                     {
                       "key": "video",
                       "value": "https://youtube.com/...",

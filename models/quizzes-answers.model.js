@@ -7,7 +7,7 @@ const quizzesAnswersSchema = new mongoose.Schema({
     ref: "Quizzes",
     required: true,
   },
-  topic: {
+  title: {
     type: String,
     required: true,
     trim: true,
@@ -44,9 +44,8 @@ const quizzesAnswersSchema = new mongoose.Schema({
 
 quizzesAnswersSchema.pre("save", async function () {
   try {
-    console.log("quizId received:", this.quizId);
-
     const quiz = await Quizzes.findById(this.quizId);
+    const validAnswers = ["A", "B", "C", "D"];
     let score = 0;
 
     if (!quiz) {
@@ -55,6 +54,12 @@ quizzesAnswersSchema.pre("save", async function () {
 
     this.questions.forEach((answeredQuestion) => {
       const originalQuestion = quiz.questions.id(answeredQuestion.questionId);
+
+      if (!validAnswers.includes(answeredQuestion.userAnswer)) {
+        throw new Error(
+          `Invalid answer '${answeredQuestion.userAnswer}' for question ID ${answeredQuestion.questionId}`
+        );
+      }
 
       if (
         originalQuestion &&

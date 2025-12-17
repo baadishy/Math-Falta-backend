@@ -74,7 +74,7 @@ const getUserById = async (req, res, next) => {
                     },
                   },
                   in: {
-                    topic: "$$attempt.topic",
+                    title: "$$attempt.title",
                     score: "$$attempt.score",
 
                     questions: {
@@ -149,7 +149,11 @@ const getUserById = async (req, res, next) => {
         .json({ success: false, message: "User not found" });
     }
 
-    res.status(200).json({ success: true, data: user[0] });
+    const latestActivities = Activites.find({ userId: id })
+      .sort({ createdAt: -1 })
+      .limit(5);
+
+    res.status(200).json({ success: true, data: {...user[0], latestActivities: latestActivities} });
   } catch (err) {
     next(err);
   }

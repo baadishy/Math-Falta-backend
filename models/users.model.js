@@ -44,6 +44,19 @@ const usersSchema = new mongoose.Schema({
     trim: true,
     match: [/^(5|6|7|8|9)$/, "Grade must be between 5 and 9"],
   },
+  lessonsCompleted: {
+    type: [{
+    lessonId: {
+        type: mongoose.Schema.Types.ObjectId,
+        required: true,
+        ref: "Lessons",
+      },
+      lastOpened: {
+        type: Date,
+        default: Date.now(),
+      }
+    }],
+  },
 }, { timestamps: true });
 
 usersSchema.index({email: 1}, {unique: true});

@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 
 const quizzesSchema = new mongoose.Schema(
   {
-    topic: {
+    title: {
       type: String,
       required: true,
       trim: true,
@@ -41,8 +41,8 @@ const quizzesSchema = new mongoose.Schema(
                     // Validate if the image is a valid URL
                     return /^https?:\/\/.+/.test(v);
                   },
+                  message: "Invalid image URL",
                 },
-                message: "Invalid image URL",
               },
               publicId: {
                 type: String,
@@ -57,7 +57,10 @@ const quizzesSchema = new mongoose.Schema(
           options: {
             type: [String],
             required: true,
-            validate: [(arr) => (arr.length = 4), "There must be 4 options"],
+            validate: {
+              validator: (arr) => Array.isArray(arr) && arr.length === 4,
+              message: "There must be 4 options",
+            },
           },
           answer: {
             type: String,
@@ -92,7 +95,6 @@ quizzesSchema.pre("save", async function (next) {
               )} is required for image questions`
             );
           }
-          q.options[i] = `${validAnswers[i]}) ${q.options[i].trim()}`;
         }
         if (!validAnswers.includes(q.answer)) {
           throw new Error(

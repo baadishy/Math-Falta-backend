@@ -22,9 +22,11 @@ const {
 router.use(authMiddleware, adminMiddleware);
 
 router.get("/", getAllQuizzes);
-router.get("/:id", getQuizById);
+// Specific routes first
 router.get("/answers/:quizAnswersId/:id", getQuizAnswersById);
 router.get("/trash", getDeletedQuizzes);
+// Parameterized route last
+router.get("/:id", getQuizById);
 
 router.post("/", uploadImages, createQuiz);
 
