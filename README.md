@@ -184,6 +184,34 @@ Example lesson:
 
 Note: All routes are prefixed with `/api` (e.g. full path `/api/auth/sign-up`).
 
+---
+
+## Troubleshooting
+
+**Port already in use (EADDRINUSE)** ⚠️
+
+If the server fails to start with `EADDRINUSE` it means another process is listening on the same port (default: `3000`). The server now performs a port-check at startup and will print diagnostics to help you find the offending process.
+
+- On Windows, run:
+
+  ```powershell
+  Get-NetTCPConnection -LocalPort 3000 | Format-List -Property *
+  # then find the OwningProcess (PID) and kill it if needed:
+  taskkill /PID <pid> /F
+  ```
+
+- On macOS/Linux, run:
+
+  ```bash
+  lsof -i :3000 -sTCP:LISTEN -n -P
+  # then kill the process, for example:
+  kill $(lsof -t -i :3000)
+  ```
+
+- Alternative quick workaround: change the port for local development by setting `PORT` in `.env.development.local`.
+
+If the port was occupied by a previous, orphaned `node` process (nodemon restart races can sometimes cause this), killing the PID or rebooting will resolve it. The new diagnostics will show process info to make this easier.
+
 ### Auth routes (public)
 
 1. POST /api/auth/sign-up
@@ -398,6 +426,24 @@ Endpoints supported (all admin-only):
 
 ---
 
+## Frontend development
+
+The repository includes a simple frontend in the sibling folder `Math-Falta-frontend/`. During development the backend serves that folder statically so you can open pages at `http://localhost:3000/<page>.html` (for example `http://localhost:3000/sign-in.html`).
+
+Key frontend files added:
+
+- `Math-Falta-frontend/js/app.js` - small API helper (fetch wrapper using `credentials: 'include'` so auth cookie is sent)
+- `Math-Falta-frontend/js/theme.js` - centralized theme toggle (uses `localStorage.theme`)
+- `Math-Falta-frontend/js/auth.js` - sign-in / sign-up wiring
+- `Math-Falta-frontend/js/quizzes.js` - loads quiz titles and links to `quiz.html?id=`
+- `Math-Falta-frontend/js/quiz.js` - loads a quiz by id and submits answers
+- `Math-Falta-frontend/js/quiz-result.js` - loads and displays submitted answers
+- `Math-Falta-frontend/js/dashboard.js` - loads the authenticated user's profile and leaderboard
+
+Run the backend and open `http://localhost:3000` to view the frontend. Authentication uses a cookie; sign-in and sign-up set the cookie for subsequent requests.
+
+---
+
 ## Example requests & example responses
 
 ### 1) Sign-up (POST /api/auth/sign-up)
@@ -498,6 +544,62 @@ npm run dev  # or npm start
 ```
 
 3. The server will run and listen on http://localhost:PORT.
+
+---
+
+## Developer quick start ⚙️
+
+1. Install dependencies
+
+```bash
+cd Math-Falta-backend
+npm install
+```
+
+2. Run the server (development)
+
+```bash
+npm run dev
+```
+
+3. Create a local admin user (dev helper)
+
+```bash
+node scripts/create-admin.js
+```
+
+4. Create a sample quiz (admin-only, uses admin sign-in behind the scenes)
+
+```bash
+node scripts/create-quiz.js
+```
+
+5. Run unit tests
+
+```bash
+npm test
+```
+
+---
+
+## Troubleshooting & common fixes 🔧
+
+- Server not reachable / connection refused:
+
+  - Ensure MongoDB is running and `MONGODB_URI` is correct in your `.env.*` files.
+  - Run `node server.js` (foreground) to see full stack traces if nodemon is restarting.
+
+- Duplicate schema index warnings (Mongoose):
+
+  - Remove duplicate index definitions (e.g. avoid setting `unique: true` on a path and also calling `schema.index({...}, { unique: true })`).
+
+- Admin scripts failing to create resources:
+
+  - Ensure admin exists (`node scripts/create-admin.js`) and that your server is running.
+  - When `create-quiz.js` fails, it prints helpful diagnostics (HTTP status and body) to help identify validation or permission errors.
+
+- Tests failing locally:
+  - Run `npm test --silent` to see Jest output; controller tests mock Mongoose models so they run without an active server.
 
 ---
 

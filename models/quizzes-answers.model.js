@@ -79,6 +79,7 @@ quizzesAnswersSchema.pre("save", async function () {
 });
 
 quizzesAnswersSchema.index({userId: 1});
+quizzesAnswersSchema.index({userId: 1, quizId: 1}, {unique: true});
 
 const QuizzesAnswers = mongoose.model("QuizzesAnswers", quizzesAnswersSchema);
 module.exports = QuizzesAnswers;

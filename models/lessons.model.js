@@ -21,16 +21,17 @@ const lessonsSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
-    video: {
+    videoUrl: {
       type: String,
       required: true,
+      trim: true,
       validate: {
         validator: function (v) {
-          // Validate if the video is a valid URL
+          // Validate if the videoUrl is a valid URL
           return /^https?:\/\/.+/.test(v);
         },
+        message: "Invalid video URL",
       },
-      message: "Invalid video URL",
     },
     docs: {
       type: [

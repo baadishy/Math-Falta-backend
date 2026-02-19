@@ -29,9 +29,7 @@ describe("Quizzes controllers (unit)", () => {
   test("getTitlesByGrade returns titles for grade", async () => {
     const req = { user: { grade: "7" } };
     const quizzes = [{ title: "A" }, { title: "B" }];
-    Quizzes.find.mockReturnValue({
-      select: jest.fn().mockResolvedValue(quizzes),
-    });
+    Quizzes.aggregate = jest.fn().mockResolvedValue(quizzes);
 
     const res = {
       status: jest.fn().mockReturnThis(),
@@ -40,9 +38,9 @@ describe("Quizzes controllers (unit)", () => {
 
     await getTitlesByGrade(req, res, () => {});
 
-    expect(Quizzes.find).toHaveBeenCalledWith({ grade: "7", isDeleted: false });
+    expect(Quizzes.aggregate).toHaveBeenCalled();
     expect(res.status).toHaveBeenCalledWith(200);
-    expect(res.json).toHaveBeenCalledWith({ success: true, data: ["A", "B"] });
+    expect(res.json).toHaveBeenCalledWith({ success: true, data: quizzes });
   });
 
   test("getQuizByQuizId forbids access when grade mismatch", async () => {

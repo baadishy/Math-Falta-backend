@@ -24,14 +24,19 @@ const signUp = async (req, res, next) => {
       password: newUser.password,
       parentNumber: newUser.parentNumber,
       grade: newUser.grade,
-      role: 'student',
+      role: "student",
     });
 
     const token = jwt.sign({ id: createdUser._id }, JWT_SECRET, {
       expiresIn: JWT_ENDS_IN,
     });
-    
-    sendEmail(createdUser.email, "Welcome Email", "http://math-falta.com/dashboard", createdUser.name );
+
+    sendEmail(
+      createdUser.email,
+      "Welcome Email",
+      "http://math-falta.com/dashboard",
+      createdUser
+    );
 
     res.cookie("token", token, {
       httpOnly: true,
@@ -43,7 +48,6 @@ const signUp = async (req, res, next) => {
     res.status(201).json({
       success: true,
       msg: "User created successfully",
-      data: createdUser,
     });
   } catch (err) {
     next(err);
@@ -58,9 +62,10 @@ const signIn = async (req, res, next) => {
     if (!user) {
       user = await Admins.findOne({ email });
       if (!user) {
-      return res.status(400).json({ success: false, msg: "Invalid email" });
+        return res.status(400).json({ success: false, msg: "Invalid email" });
+      }
+      user.isAdmin = true;
     }
-  }
 
     const isPasswordValid = await bycrypt.compare(password, user.password);
 
@@ -72,7 +77,6 @@ const signIn = async (req, res, next) => {
       expiresIn: JWT_ENDS_IN,
     });
 
-
     res.cookie("token", token, {
       httpOnly: true,
       maxAge: 7 * 24 * 60 * 60 * 1000,
@@ -83,14 +87,20 @@ const signIn = async (req, res, next) => {
     res.status(200).json({
       success: true,
       msg: "User signed in successfully",
-      data: user,
+      isAdmin: user.isAdmin || false,
     });
   } catch (err) {
     next(err);
   }
 };
 
+const signOut = (req, res) => {
+  res.clearCookie("token");
+  res.status(200).json({ success: true, msg: "Signed out" });
+};
+
 module.exports = {
   signUp,
   signIn,
+  signOut,
 };

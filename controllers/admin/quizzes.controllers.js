@@ -2,11 +2,23 @@ const Quizzes = require("../../models/quizzes.model");
 const QuizzesAnswers = require("../../models/quizzes-answers.model");
 const cloudinary = require("../../config/cloudinary");
 
+// Normalize answers so they are stored as letters 'A'..'D'
+function normalizeAnswer(ans) {
+  if (typeof ans === "number") return String.fromCharCode(65 + ans);
+  if (typeof ans === "string") {
+    const trimmed = ans.trim();
+    if (/^[0-9]+$/.test(trimmed))
+      return String.fromCharCode(65 + Number(trimmed));
+    if (/^[A-Da-d]$/.test(trimmed)) return trimmed.toUpperCase();
+  }
+  return ans;
+}
+
 /* ================= GET ALL ================= */
 const getAllQuizzes = async (req, res, next) => {
   try {
     const quizzes = await Quizzes.find({ isDeleted: false }).select(
-      "title grade"
+      "title grade updatedAt",
     );
     res.status(200).json({ success: true, data: quizzes });
   } catch (error) {
@@ -25,6 +37,161 @@ const getDeletedQuizzes = async (req, res, next) => {
 
 /* ================= GET BY ID ================= */
 const getQuizById = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    if (!id)
+      return res
+        .status(400)
+        .json({ success: false, message: "Quiz ID is required" });
+
+    const mongoose = require("mongoose");
+
+    const quiz = await Quizzes.aggregate([
+      { $match: { _id: new mongoose.Types.ObjectId(id) } },
+
+      // get quiz answers
+      {
+        $lookup: {
+          from: "quizzesanswers",
+          localField: "_id",
+          foreignField: "quizId",
+          as: "answers",
+        },
+      },
+
+      // join users
+      {
+        $lookup: {
+          from: "users",
+          localField: "answers.userId",
+          foreignField: "_id",
+          as: "users",
+        },
+      },
+
+      // calculate total score per user from answers
+      {
+        $addFields: {
+          usersWithTotalScore: {
+            $map: {
+              input: "$users",
+              as: "u",
+              in: {
+                _id: "$$u._id",
+                name: "$$u.name",
+                email: "$$u.email",
+                totalScore: {
+                  $sum: {
+                    $map: {
+                      input: {
+                        $filter: {
+                          input: "$answers",
+                          as: "a",
+                          cond: { $eq: ["$$a.userId", "$$u._id"] },
+                        },
+                      },
+                      as: "ua",
+                      in: "$$ua.score",
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+
+      // map answers with user + computed totalScore
+      {
+        $addFields: {
+          detailedResults: {
+            $map: {
+              input: "$answers",
+              as: "a",
+              in: {
+                score: "$$a.score",
+                createdAt: "$$a.createdAt",
+                user: {
+                  $arrayElemAt: [
+                    {
+                      $filter: {
+                        input: "$usersWithTotalScore",
+                        as: "u",
+                        cond: { $eq: ["$$u._id", "$$a.userId"] },
+                      },
+                    },
+                    0,
+                  ],
+                },
+              },
+            },
+          },
+        },
+      },
+
+      // stats
+      {
+        $addFields: {
+          questionsCount: { $size: "$questions" },
+          attempts: { $size: "$answers" },
+          highestScore: { $max: "$answers.score" },
+        },
+      },
+
+      {
+        $addFields: {
+          highestScoreCount: {
+            $size: {
+              $filter: {
+                input: "$answers",
+                as: "a",
+                cond: { $eq: ["$$a.score", "$highestScore"] },
+              },
+            },
+          },
+        },
+      },
+
+      // final projection
+      {
+        $project: {
+          title: 1,
+          grade: 1,
+          isDeleted: 1,
+          isPublished: 1,
+          createdAt: 1,
+          updatedAt: 1,
+          questions: 1,
+
+          questionsCount: 1,
+          attempts: 1,
+          highestScore: 1,
+          highestScoreCount: 1,
+
+          detailedResults: {
+            score: 1,
+            createdAt: 1,
+            "user._id": 1,
+            "user.name": 1,
+            "user.email": 1,
+            "user.totalScore": 1,
+          },
+        },
+      },
+    ]);
+
+    if (!quiz || quiz.length === 0)
+      return res
+        .status(404)
+        .json({ success: false, message: "Quiz not found" });
+
+    res.status(200).json({ success: true, data: quiz[0] });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getQuizByIdEdit = async (req, res, next) => {
   try {
     const { id } = req.params;
     if (!id)
@@ -61,7 +228,7 @@ const getQuizAnswersById = async (req, res, next) => {
 
     const merged = quizAnswer.quizId.questions.map((q) => {
       const userQ = quizAnswer.questions.find(
-        (uq) => uq.questionId.toString() === q._id.toString()
+        (uq) => uq.questionId.toString() === q._id.toString(),
       );
 
       return {
@@ -105,7 +272,8 @@ const createQuiz = async (req, res, next) => {
       return {
         question: q.question,
         options: q.options,
-        answer: q.answer,
+        // Normalize answers so they are always stored as letters A-D
+        answer: normalizeAnswer(q.answer),
         image,
       };
     });
@@ -113,7 +281,7 @@ const createQuiz = async (req, res, next) => {
     const quiz = new Quizzes({ title, grade, questions: questionsData });
     await quiz.save();
 
-    res.status(201).json({ success: true, data: quiz });
+    res.status(201).json({ success: true,  msg: "Quiz created successfully"});
   } catch (error) {
     next(error);
   }
@@ -169,7 +337,7 @@ const addQuizQuestions = async (req, res, next) => {
       return {
         question: q.question,
         options: q.options,
-        answer: q.answer,
+        answer: normalizeAnswer(q.answer),
         image,
       };
     });
@@ -188,7 +356,7 @@ const updateQuizQuestion = async (req, res, next) => {
   try {
     const { quizId, questionId } = req.params;
     const { question, options, answer } = req.body;
-    const file = req.files?.image?.[0];
+    const file = req.files?.image0?.[0];
 
     const quiz = await Quizzes.findOne({ _id: quizId, isDeleted: false });
     if (!quiz)
@@ -204,7 +372,8 @@ const updateQuizQuestion = async (req, res, next) => {
 
     if (question) q.question = question;
     if (options) q.options = options;
-    if (answer) q.answer = answer;
+    if (answer !== undefined && answer !== null)
+      q.answer = normalizeAnswer(answer);
 
     if (file) {
       if (q.image?.publicId) {
@@ -244,7 +413,9 @@ const deleteQuizQuestion = async (req, res, next) => {
       await cloudinary.uploader.destroy(q.image.publicId);
     }
 
-    await q.remove();
+    quiz.questions = quiz.questions.filter(
+      (ques) => ques._id.toString() !== questionId,
+    );
     await quiz.save();
 
     res.status(200).json({ success: true, message: "Question deleted" });
@@ -355,4 +526,5 @@ module.exports = {
   softDeleteQuizById,
   restoreQuizById,
   getDeletedQuizzes,
+  getQuizByIdEdit,
 };

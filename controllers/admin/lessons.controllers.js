@@ -1,11 +1,37 @@
 const Lessons = require("../../models/lessons.model");
+const Users = require("../../models/users.model");
 const cloudinary = require("../../config/cloudinary");
+const extractYouTubeVideoId = require("../../utils/extract-video-id");
 
 /* ================= GET ALL LESSONS ================= */
 const getAllLessons = async (req, res, next) => {
   try {
-    const lessons = await Lessons.find({ isDeleted: false });
-    res.status(200).json({ success: true, data: lessons });
+    // 1️⃣ Get all lessons
+    const lessons = await Lessons.find({ isDeleted: false }).lean();
+
+    // 2️⃣ Get all lessonsCompleted from users
+    const userLessons = await Users.aggregate([
+      { $unwind: "$lessonsCompleted" }, // flatten lessonsCompleted array
+      { $group: { _id: "$lessonsCompleted.lessonId", count: { $sum: 1 } } }, // count users per lesson
+    ]);
+
+    // Convert aggregation result to a lookup object for faster access
+    const lessonWatchMap = {};
+    userLessons.forEach((ul) => {
+      lessonWatchMap[ul._id.toString()] = ul.count;
+    });
+
+    // Get total users
+    const totalUsers = await Users.countDocuments();
+
+    // Add watchedBy and totalUsers to each lesson
+    const lessonsWithProgress = lessons.map((lesson) => ({
+      ...lesson,
+      watchedBy: lessonWatchMap[lesson._id.toString()] || 0,
+      totalUsers,
+    }));
+
+    res.status(200).json({ success: true, data: lessonsWithProgress });
   } catch (error) {
     next(error);
   }
@@ -76,11 +102,19 @@ const createLesson = async (req, res, next) => {
       label: parsedLabels[i] || null,
     }));
 
+    const videoId = extractYouTubeVideoId(video);
+    if (!videoId) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid YouTube video URL",
+      });
+    }
+
     const lesson = new Lessons({
       title,
       topic,
       grade,
-      video,
+      videoUrl: "https://www.youtube.com/embed/" + videoId,
       docs: lessonDocs,
     });
 
@@ -109,7 +143,17 @@ const updateLessonById = async (req, res, next) => {
     if (title) lesson.title = title;
     if (topic) lesson.topic = topic;
     if (grade) lesson.grade = grade;
-    if (video) lesson.video = video;
+
+    if (video) {
+      const videoId = extractYouTubeVideoId(video);
+      if (!videoId) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid YouTube video URL",
+        });
+      }
+      lesson.videoUrl = "https://www.youtube.com/embed/" + videoId;
+    }
 
     await lesson.save();
 
@@ -125,7 +169,7 @@ const addLessonDocs = async (req, res, next) => {
     const { id } = req.params;
     const { labels } = req.body;
 
-    const lesson = await Lessons.find({ _id: id, isDeleted: false });
+    const lesson = await Lessons.findOne({ _id: id, isDeleted: false });
     if (!lesson) {
       return res.status(404).json({
         success: false,
@@ -183,7 +227,7 @@ const deleteLessonDoc = async (req, res, next) => {
       resource_type: "raw",
     });
 
-    await doc.remove();
+    lesson.docs = lesson.docs.filter((d) => d._id.toString() !== docId);
     await lesson.save();
 
     res.status(200).json({
@@ -201,7 +245,7 @@ const updateLessonDocLabel = async (req, res, next) => {
     const { lessonId, docId } = req.params;
     const { label } = req.body;
 
-    const lesson = await Lessons.find({ _id: lessonId, isDeleted: false });
+    const lesson = await Lessons.findOne({ _id: lessonId, isDeleted: false });
     if (!lesson) {
       return res.status(404).json({ success: false });
     }
@@ -283,7 +327,7 @@ const restoreLessonById = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    const lesson = await Lessons.find({ _id: id, isDeleted: true });
+    const lesson = await Lessons.findOne({ _id: id, isDeleted: true });
     if (!lesson) {
       return res.status(404).json({
         success: false,

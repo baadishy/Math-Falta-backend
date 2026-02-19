@@ -1,51 +1,117 @@
-const createEmailTemplate = (name, link) => {
+const createEmailTemplate = ({ name, grade, parentNumber }, link) => {
   return `
-  <div style="font-family: Arial, sans-serif; background:#f7f7ff; padding: 25px;">
-    <div style="max-width: 500px; margin: auto; background: white; padding: 20px; border-radius: 10px;">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Welcome to Math-Falta</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f6f6f8; font-family:Arial, Helvetica, sans-serif;">
 
-      <h2 style="color:#4e32a8; text-align:center;">
-        🎉 Welcome to MathForMe!
-      </h2>
+  <!-- Wrapper -->
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f6f6f8; padding:20px 0;">
+    <tr>
+      <td align="center">
 
-      <p style="font-size: 16px;">
-        Hi ${name || "there"},
-      </p>
+        <!-- Main Card -->
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px; background-color:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 8px 24px rgba(0,0,0,0.08);">
 
-      <p style="font-size: 16px; line-height: 1.6;">
-        We're excited to have you join <b>MathForMe</b> — your new place to master math with fun quizzes and easy lessons.
-      </p>
+          <!-- Header -->
+          <tr>
+            <td style="background-color:#135bec; padding:20px; text-align:center;">
+              <span style="font-size:22px; font-weight:bold; color:#ffffff;">
+                📘 Math-Falta
+              </span>
+            </td>
+          </tr>
 
-      <p style="font-size: 16px; line-height: 1.6;">
-        You can now log in and start exploring topics for your grade.
-      </p>
+          <!-- Hero -->
+          <tr>
+            <td style="padding:30px 20px; text-align:center;">
+              <h1 style="margin:0 0 10px; font-size:26px; color:#111827;">
+                Welcome aboard, ${name || "Student"} 🎉
+              </h1>
+              <p style="margin:0; font-size:16px; color:#4b5563; line-height:1.6;">
+                Your account has been successfully created.<br/>
+                We’re excited to help you master mathematics!
+              </p>
+            </td>
+          </tr>
 
-      <div style="text-align:center; margin: 25px 0;">
-        <a href="${link}"
-           style="
-            background:#4e32a8;
-            color:white;
-            padding:12px 25px;
-            border-radius:8px;
-            text-decoration:none;
-            font-size:16px;">
-          Go to Dashboard
-        </a>
-      </div>
+          <!-- Details -->
+          <tr>
+            <td style="padding:0 20px 20px;">
+              <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f9fafb; border-radius:8px; border:1px solid #e5e7eb;">
+                
+                <tr>
+                  <td style="padding:12px 16px; font-size:14px; color:#6b7280;">
+                    <strong style="color:#111827;">Student Name:</strong>
+                    ${name || "Student"}
+                  </td>
+                </tr>
 
-      <p style="font-size: 14px; color:#777;">
-        If you didn’t create this account, please ignore this email.
-      </p>
+                <tr>
+                  <td style="padding:12px 16px; font-size:14px; color:#6b7280; border-top:1px solid #e5e7eb;">
+                    <strong style="color:#111827;">Grade Level:</strong>
+                    ${grade || "Unknown"} Grade
+                  </td>
+                </tr>
 
-    </div>
-  </div>
-  `;
+                <tr>
+                  <td style="padding:12px 16px; font-size:14px; color:#6b7280; border-top:1px solid #e5e7eb;">
+                    <strong style="color:#111827;">Parent Phone:</strong>
+                    +2${parentPhone || "—"}
+                  </td>
+                </tr>
+
+              </table>
+            </td>
+          </tr>
+
+          <!-- CTA -->
+          <tr>
+            <td align="center" style="padding:20px;">
+              <a href="${link}"
+                style="
+                  display:inline-block;
+                  padding:14px 28px;
+                  background-color:#135bec;
+                  color:#ffffff;
+                  text-decoration:none;
+                  font-size:16px;
+                  font-weight:bold;
+                  border-radius:8px;
+                ">
+                Go to Dashboard →
+              </a>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding:20px; text-align:center; font-size:12px; color:#9ca3af;">
+              Need help? Contact our support team.<br/><br/>
+              © 2025 Math-Falta. All rights reserved.
+            </td>
+          </tr>
+
+        </table>
+
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>
+`;
 };
 
 const emailTemplates = [
   {
     label: "Welcome Email",
     generateSubject: (name) => `Welcome to MathForMe, ${name || "there"}!`,
-    generateBody: (name, link) => createEmailTemplate(name, link),
+    generateBody: ({ name, grade, parentNumber }, link) => createEmailTemplate({ name, grade, parentNumber }, link),
   },
 ];
 

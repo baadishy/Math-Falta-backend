@@ -23,4 +23,28 @@ const storage = new CloudinaryStorage({
 
 const uploadDocs = multer({ storage });
 
-module.exports = uploadDocs.fields([{ name: "docs", maxCount: 100 }]);
+// middleware for incoming uploads (keeps existing default export)
+const middleware = uploadDocs.fields([{ name: "docs", maxCount: 100 }]);
+
+// programmatic upload helper: accepts Buffer or data URI
+async function uploadFile(input, options = {}) {
+  let dataUri = input;
+
+  // If a Buffer was provided, convert to data URI. Caller may pass contentType via options.
+  if (Buffer.isBuffer(input)) {
+    const contentType = options.contentType || "application/pdf";
+    dataUri = `data:${contentType};base64,${input.toString("base64")}`;
+  }
+
+  const opts = Object.assign({}, options);
+
+  // Ensure resource_type/raw is used for docs unless overridden
+  if (!opts.resource_type) opts.resource_type = "raw";
+  // Ensure public upload type (avoid authenticated/private delivery)
+  if (!opts.type) opts.type = "upload";
+
+  return cloudinary.uploader.upload(dataUri, opts);
+}
+
+module.exports = middleware;
+module.exports.uploadFile = uploadFile;

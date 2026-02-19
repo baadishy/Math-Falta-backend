@@ -17,6 +17,7 @@ const {
   softDeleteQuizById,
   restoreQuizById,
   getDeletedQuizzes,
+  getQuizByIdEdit
 } = require("../../controllers/admin/quizzes.controllers");
 
 router.use(authMiddleware, adminMiddleware);
@@ -27,6 +28,7 @@ router.get("/answers/:quizAnswersId/:id", getQuizAnswersById);
 router.get("/trash", getDeletedQuizzes);
 // Parameterized route last
 router.get("/:id", getQuizById);
+router.get('/edit/:id', getQuizByIdEdit); // to fetch quiz data for editing
 
 router.post("/", uploadImages, createQuiz);
 

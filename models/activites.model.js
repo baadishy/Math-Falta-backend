@@ -24,11 +24,14 @@ const activitesSchema = new mongoose.Schema(
     },
     score: {
       type: Number,
-      default: 0,
+      default: null,
+      required: false,
     },
   },
   { timestamps: true }
 );
+
+activitesSchema.index({ userId: 1, activityId: 1, activityType: 1 });
 
 const Activites = mongoose.model("Activites", activitesSchema);
 
