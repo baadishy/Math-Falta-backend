@@ -114,6 +114,8 @@ app.post("/", async (req, res) => {
   res.send("server running");
 });
 
+console.log('mongodb uri:', MONGODB_URI ? MONGODB_URI : 'not set');
+
 mongoose
   .connect(MONGODB_URI)
   .then(async () => {
