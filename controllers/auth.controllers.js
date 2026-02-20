@@ -35,14 +35,18 @@ const signUp = async (req, res, next) => {
       createdUser.email,
       "Welcome Email",
       "http://math-falta.com/dashboard",
-      createdUser
+      createdUser,
     );
+
+    const isProd = process.env.NODE_ENV === "production";
+    const secure = isProd;
+    const sameSite = secure ? "none" : "lax";
 
     res.cookie("token", token, {
       httpOnly: true,
       maxAge: 7 * 24 * 60 * 60 * 1000,
-      secure: false,
-      sameSite: "lax",
+      secure,
+      sameSite,
     });
 
     res.status(201).json({
@@ -77,11 +81,15 @@ const signIn = async (req, res, next) => {
       expiresIn: JWT_ENDS_IN,
     });
 
+    const isProd = process.env.NODE_ENV === "production";
+    const secure = isProd;
+    const sameSite = secure ? "none" : "lax";
+
     res.cookie("token", token, {
       httpOnly: true,
       maxAge: 7 * 24 * 60 * 60 * 1000,
-      secure: false,
-      sameSite: "lax",
+      secure,
+      sameSite,
     });
 
     res.status(200).json({
@@ -95,7 +103,10 @@ const signIn = async (req, res, next) => {
 };
 
 const signOut = (req, res) => {
-  res.clearCookie("token");
+  const isProd = process.env.NODE_ENV === "production";
+  const secure = isProd;
+  const sameSite = secure ? "none" : "lax";
+  res.clearCookie("token", { secure, sameSite });
   res.status(200).json({ success: true, msg: "Signed out" });
 };
 

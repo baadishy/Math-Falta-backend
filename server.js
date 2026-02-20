@@ -3,7 +3,7 @@ console.log("server.js starting");
 const app = express();
 const cors = require("cors");
 const path = require("path");
-const { PORT, MONGODB_URI } = require("./config/env");
+const { PORT, MONGODB_URI, FRONTEND_URL } = require("./config/env");
 const authRouter = require("./routes/auth.routes");
 const usersRouter = require("./routes/users.routes");
 const quizzesRouter = require("./routes/quizzes.routes");
@@ -19,13 +19,32 @@ const adminRouter = require("./routes/admin/admin.routes");
 const reportsRouter = require("./routes/reports.routes");
 const { ensurePortFree } = require("./utils/port-check");
 
-app.use(express.json(), cors());
+// Configure CORS to accept requests from the frontend only and allow credentials (cookies)
+const isProd = process.env.NODE_ENV === "production";
+const corsOptions = {
+  origin: isProd && FRONTEND_URL ? FRONTEND_URL : true,
+  credentials: true,
+};
+
+app.use(express.json());
+app.use(cors(corsOptions));
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(arcjetMiddleware);
 
-// Serve frontend static files (makes frontend same-origin for cookies and simplifies development)
-app.use(express.static(path.join(__dirname, "../Math-Falta-frontend")));
+// Do NOT serve the frontend by default in production.
+// If you need to serve the frontend for local development, set `SERVE_FRONTEND=true`.
+if (process.env.SERVE_FRONTEND === "true") {
+  const frontendPath = path.join(__dirname, "../Math-Falta-frontend");
+  try {
+    if (require("fs").existsSync(frontendPath)) {
+      app.use(express.static(frontendPath));
+      console.log("Serving frontend from", frontendPath);
+    }
+  } catch (e) {
+    console.warn("Could not serve frontend:", e.message);
+  }
+}
 
 app.use("/api/users", usersRouter);
 app.use("/api/auth", authRouter);
