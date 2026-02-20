@@ -1,39 +1,41 @@
-const { shield, detectBot, tokenBucket } = require("@arcjet/node");
-const arcjet = require("@arcjet/node").default;
+// arcjet.js
 const { ARCJET_KEY } = require("../config/env");
 
-const aj = arcjet({
-  // Get your site key from https://app.arcjet.com and set it as an environment
-  // variable rather than hard coding.
-  key: ARCJET_KEY,
-  rules: [
-    // Shield protects your app from common attacks e.g. SQL injection
-    shield({ mode: "LIVE" }),
-    // Create a bot detection rule
-    detectBot({
-      mode: "DRY_RUN", // Blocks requests. Use "DRY_RUN" to log only
-      // Block all bots except the following
-      allow: [
-        "CATEGORY:SEARCH_ENGINE",
-        "USER_AGENT:PostmanRuntime"
-         // Google, Bing, etc
-        // Uncomment to allow these other common bot categories
-        // See the full list at https://arcjet.com/bot-list
-        //"CATEGORY:MONITOR", // Uptime monitoring services
-        //"CATEGORY:PREVIEW", // Link previews e.g. Slack, Discord
-      ],
-    }),
-    // Create a token bucket rate limit. Other algorithms are supported.
-    tokenBucket({
-      mode: "LIVE",
-      // Tracked by IP address by default, but this can be customized
-      // See https://docs.arcjet.com/fingerprints
-      //characteristics: ["ip.src"],
-      refillRate: 10, // Refill 10 tokens per interval
-      interval: 2, // Refill every 5 seconds
-      capacity: 10, // Bucket capacity of 10 tokens
-    }),
-  ],
-});
+let aj;
 
-module.exports = aj;
+// Use async IIFE to load the ES module
+(async () => {
+  // Dynamically import the ES module
+  const arcjetModule = await import("@arcjet/node");
+
+  // Access exports from the module
+  const { shield, detectBot, tokenBucket } = arcjetModule;
+
+  // Initialize ArcJet
+  aj = arcjetModule.default({
+    key: ARCJET_KEY,
+    rules: [
+      shield({ mode: "LIVE" }),
+      detectBot({
+        mode: "DRY_RUN",
+        allow: ["CATEGORY:SEARCH_ENGINE", "USER_AGENT:PostmanRuntime"],
+      }),
+      tokenBucket({
+        mode: "LIVE",
+        refillRate: 10,
+        interval: 2,
+        capacity: 10,
+      }),
+    ],
+  });
+})();
+
+// Export a function to get the initialized instance
+// This ensures the import finishes before using it
+module.exports = async function getArcJet() {
+  // Wait until aj is initialized
+  while (!aj) {
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  return aj;
+};
