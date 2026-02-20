@@ -30,7 +30,7 @@ const aj = arcjet({
       // See https://docs.arcjet.com/fingerprints
       //characteristics: ["ip.src"],
       refillRate: 10, // Refill 10 tokens per interval
-      interval: 5, // Refill every 5 seconds
+      interval: 2, // Refill every 5 seconds
       capacity: 10, // Bucket capacity of 10 tokens
     }),
   ],

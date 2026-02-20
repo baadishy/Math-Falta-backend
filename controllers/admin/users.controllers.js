@@ -11,6 +11,17 @@ const FormData = require("form-data");
 const cloudinary = require("../../config/cloudinary");
 const uploadDocs = require("../../utils/upload-docs");
 const Reports = require("../../models/reports.model");
+const fs = require("fs");
+const path = require("path");
+
+function escapeXml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
 const {
   WHATSAPP_PHONE_NUMBER_ID,
   WHATSAPP_TOKEN,
@@ -162,6 +173,8 @@ const getUserById = async (req, res, next) => {
                     title: "$$attempt.title",
                     score: "$$attempt.score",
                     createdAt: "$$attempt.createdAt",
+                    timeTaken: "$$attempt.timeTaken",
+                    timeLimit: "$$quiz.timeLimit",
                     quizId: "$$attempt.quizId",
 
                     questions: {
@@ -754,52 +767,121 @@ const generateQuizReport = async (req, res, next) => {
     const percent = total ? Math.round((correct / total) * 100) : null;
     const attemptDate =
       attempt && attempt.createdAt ? new Date(attempt.createdAt) : new Date();
-    const timeSpent =
-      attempt && (attempt.timeSpent || attempt.duration || attempt.time)
-        ? attempt.timeSpent || attempt.duration || attempt.time
+    const timeSpentRaw =
+      attempt &&
+      (attempt.timeSpent ||
+        attempt.duration ||
+        attempt.time ||
+        attempt.timeTaken)
+        ? attempt.timeSpent ||
+          attempt.duration ||
+          attempt.time ||
+          attempt.timeTaken
         : null;
 
-    // build a simple SVG image (no external deps)
+    // normalize to a human-friendly string (attempt fields are seconds or strings)
+    let timeSpent = null;
+    if (timeSpentRaw !== null && timeSpentRaw !== undefined) {
+      const secs = Number(timeSpentRaw) || 0;
+      const mm = Math.floor(secs / 60);
+      const ss = secs % 60;
+      timeSpent = `${mm}m ${ss}s`;
+    }
+
+    // build a richer SVG image: embed optional logo and draw a simple performance chart
     const width = 1000;
     const height = 560;
     const bg = "#ffffff";
     const primary = "#135bec";
     const muted = "#64748b";
 
+    // try to locate a logo file in known locations (admin can drop their image there)
+    let logoDataUri = null;
+    const logoCandidates = [
+      path.join(__dirname, "../../public/logo.jpg"),
+      path.join(
+        __dirname,
+        "../../..",
+        "Math-Falta-frontend",
+        "assets",
+        "logo.jpg",
+      ),
+      path.join(__dirname, "../../..", "Math-Falta-frontend", "logo.jpg"),
+    ];
+    for (const p of logoCandidates) {
+      try {
+        if (fs.existsSync(p)) {
+          const buf = fs.readFileSync(p);
+          const b64 = buf.toString("base64");
+          logoDataUri = `data:image/png;base64,${b64}`;
+          break;
+        }
+      } catch (e) {
+        // ignore and continue
+      }
+    }
+
+    // small performance bar chart
+    const barTotal = 260;
+    const correctPct = total > 0 ? Math.round((correct / total) * 100) : 0;
+    const correctWidth = Math.round((correctPct / 100) * barTotal);
+    const incorrectWidth = Math.max(barTotal - correctWidth, 0);
+
+    const chartBlock = `
+      <g transform="translate(620,40)">
+        <text class="label" x="0" y="0">Performance</text>
+        <rect x="0" y="14" width="${barTotal}" height="18" rx="9" fill="#eef2ff" />
+        <rect x="0" y="14" width="${correctWidth}" height="18" rx="9" fill="#10b981" />
+        <text class="muted" x="0" y="52">Correct: ${correct}</text>
+        <text class="muted" x="${barTotal}" y="52" text-anchor="end">Incorrect: ${incorrect}</text>
+        <text class="big" x="${barTotal / 2}" y="110" text-anchor="middle">${percent !== null ? percent + "%" : "-"}</text>
+      </g>
+    `;
+
+    // assemble SVG with nicer styling and optional logo
     const svg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+  <defs>
+    <linearGradient id="g1" x1="0" x2="1">
+      <stop offset="0%" stop-color="#eef2ff" />
+      <stop offset="100%" stop-color="#ffffff" />
+    </linearGradient>
+  </defs>
   <style>
-    .title{font:700 28px Arial, Helvetica, sans-serif; fill:${primary}}
-    .label{font:600 18px Arial, Helvetica, sans-serif; fill:#0f172a}
-    .muted{font:400 14px Arial, Helvetica, sans-serif; fill:${muted}}
-    .big{font:700 48px Arial, Helvetica, sans-serif; fill:#111827}
-    .box{fill:#f8fafc; stroke:#e6eef7; stroke-width:1}
+    .title{font:800 30px Inter, Arial, Helvetica, sans-serif; fill:${primary}}
+    .label{font:600 16px Inter, Arial, Helvetica, sans-serif; fill:#0f172a}
+    .muted{font:400 13px Inter, Arial, Helvetica, sans-serif; fill:${muted}}
+    .big{font:800 42px Inter, Arial, Helvetica, sans-serif; fill:#0f172a}
+    .box{fill:url(#g1); stroke:#e6eef7; stroke-width:1}
   </style>
+
   <rect width="100%" height="100%" fill="${bg}" />
-  <g transform="translate(40,40)">
+  <g transform="translate(40,28)">
     <text class="title">Math-Falta — Quiz Summary</text>
-    <text class="muted" x="0" y="34">Generated: ${new Date().toLocaleString()}</text>
+    <text class="muted" x="0" y="36">Generated: ${new Date().toLocaleString()}</text>
 
-    <g transform="translate(0,70)">
-      <rect class="box" x="0" y="0" width="920" height="420" rx="12" />
+    ${logoDataUri ? `<image href="${logoDataUri}" x="760" y="0" width="180" height="60" preserveAspectRatio="xMidYMid meet" />` : ""}
 
-      <text class="label" x="28" y="46">Student:</text>
-      <text class="muted" x="150" y="46">${user.name || "-"}</text>
+    <g transform="translate(0,80)">
+      <rect class="box" x="0" y="0" width="920" height="440" rx="16" />
 
-      <text class="label" x="28" y="86">Quiz:</text>
-      <text class="muted" x="150" y="86">${quiz?.title || "-"}</text>
+      <text class="label" x="28" y="52">Student:</text>
+      <text class="muted" x="150" y="52">${escapeXml(user.name || "-")}</text>
 
-      <text class="label" x="28" y="126">Grade:</text>
-      <text class="muted" x="150" y="126">${user.grade || "-"}</text>
+      <text class="label" x="28" y="90">Quiz:</text>
+      <text class="muted" x="150" y="90">${escapeXml(quiz?.title || "-")}</text>
+
+      <text class="label" x="28" y="128">Grade:</text>
+      <text class="muted" x="150" y="128">${escapeXml(user.grade || "-")}</text>
 
       <text class="label" x="28" y="166">Date:</text>
       <text class="muted" x="150" y="166">${attemptDate.toLocaleString()}</text>
 
-      <text class="label" x="28" y="220">Score:</text>
-      <text class="big" x="150" y="230">${correct}/${total}</text>
+      <text class="label" x="28" y="230">Score:</text>
+      <text class="big" x="150" y="240">${correct}/${total}</text>
 
-      <text class="label" x="420" y="220">Percentage:</text>
-      <text class="big" x="620" y="230">${percent !== null ? percent + "%" : "-"}</text>
+      <text class="label" x="420" y="230">Percentage:</text>
+      <text class="big" x="620" y="240">${percent !== null ? percent + "%" : "-"}</text>
 
       <text class="label" x="28" y="320">Correct:</text>
       <text class="label" x="150" y="320">${correct}</text>
@@ -808,6 +890,9 @@ const generateQuizReport = async (req, res, next) => {
       <text class="label" x="150" y="360">${incorrect}</text>
 
       ${timeSpent ? `<text class="label" x="28" y="400">Time Spent:</text><text class="muted" x="150" y="400">${timeSpent}</text>` : ""}
+      ${quiz && typeof quiz.timeLimit !== "undefined" ? `<text class="label" x="28" y="436">Time Limit:</text><text class="muted" x="150" y="436">${quiz.timeLimit && Number(quiz.timeLimit) > 0 ? quiz.timeLimit + " min" : "No limit"}</text>` : ""}
+
+      ${chartBlock}
 
     </g>
   </g>

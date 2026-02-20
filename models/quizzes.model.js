@@ -77,9 +77,15 @@ const quizzesSchema = new mongoose.Schema(
     deletedAt: {
       type: Date,
       default: null,
-    }
+    },
+    timeLimit: {
+      // time limit in minutes, 0 means no limit
+      type: Number,
+      default: 0,
+      min: 0,
+    },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 quizzesSchema.pre("save", async function (next) {
@@ -91,14 +97,14 @@ quizzesSchema.pre("save", async function (next) {
           if (!q.options[i] || q.options[i].trim() === "") {
             throw new Error(
               `Option ${String.fromCharCode(
-                65 + i
-              )} is required for image questions`
+                65 + i,
+              )} is required for image questions`,
             );
           }
         }
         if (!validAnswers.includes(q.answer)) {
           throw new Error(
-            "Answer must be one of 'A', 'B', 'C', or 'D' for image questions"
+            "Answer must be one of 'A', 'B', 'C', or 'D' for image questions",
           );
         }
       }
@@ -108,8 +114,8 @@ quizzesSchema.pre("save", async function (next) {
   }
 });
 
-quizzesSchema.index({isDeleted: 1, grade: 1});
-quizzesSchema.index({isDeleted: 1});
+quizzesSchema.index({ isDeleted: 1, grade: 1 });
+quizzesSchema.index({ isDeleted: 1 });
 
 const Quizzes = mongoose.model("Quizzes", quizzesSchema);
 module.exports = Quizzes;

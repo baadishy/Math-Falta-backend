@@ -1,46 +1,54 @@
 const mongoose = require("mongoose");
 const Quizzes = require("./quizzes.model");
 
-const quizzesAnswersSchema = new mongoose.Schema({
-  quizId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Quizzes",
-    required: true,
-  },
-  title: {
-    type: String,
-    required: true,
-    trim: true,
-  },
-  userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Users",
-    required: true,
-  },
-  score: {
-    type: Number,
-    default: 0,
-  },
-  questions: {
-    type: [
-      {
-        questionId: {
-          type: mongoose.Schema.Types.ObjectId,
-          required: true,
+const quizzesAnswersSchema = new mongoose.Schema(
+  {
+    quizId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Quizzes",
+      required: true,
+    },
+    title: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Users",
+      required: true,
+    },
+    score: {
+      type: Number,
+      default: 0,
+    },
+    timeTaken: {
+      // seconds spent by user to complete the quiz
+      type: Number,
+      default: null,
+    },
+    questions: {
+      type: [
+        {
+          questionId: {
+            type: mongoose.Schema.Types.ObjectId,
+            required: true,
+          },
+          userAnswer: {
+            type: String,
+            required: true,
+          },
+          isCorrect: {
+            type: Boolean,
+            default: false,
+          },
         },
-        userAnswer: {
-          type: String,
-          required: true,
-        },
-        isCorrect: {
-          type: Boolean,
-          default: false,
-        },
-      },
-    ],
-    required: true,
+      ],
+      required: true,
+    },
   },
-}, { timestamps: true });
+  { timestamps: true },
+);
 
 quizzesAnswersSchema.pre("save", async function () {
   try {
@@ -57,7 +65,7 @@ quizzesAnswersSchema.pre("save", async function () {
 
       if (!validAnswers.includes(answeredQuestion.userAnswer)) {
         throw new Error(
-          `Invalid answer '${answeredQuestion.userAnswer}' for question ID ${answeredQuestion.questionId}`
+          `Invalid answer '${answeredQuestion.userAnswer}' for question ID ${answeredQuestion.questionId}`,
         );
       }
 
@@ -78,8 +86,8 @@ quizzesAnswersSchema.pre("save", async function () {
   }
 });
 
-quizzesAnswersSchema.index({userId: 1});
-quizzesAnswersSchema.index({userId: 1, quizId: 1}, {unique: true});
+quizzesAnswersSchema.index({ userId: 1 });
+quizzesAnswersSchema.index({ userId: 1, quizId: 1 }, { unique: true });
 
 const QuizzesAnswers = mongoose.model("QuizzesAnswers", quizzesAnswersSchema);
 module.exports = QuizzesAnswers;

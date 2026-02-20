@@ -114,6 +114,7 @@ const getQuizzesResultsByUserId = async (req, res, next) => {
           title: 1,
           score: 1,
           questionsCount: 1,
+          timeTaken: 1,
           createdAt: 1,
         },
       },
@@ -171,7 +172,7 @@ const getQuizAnswersByQuizId = async (req, res, next) => {
 
     // 3️⃣ All solved quizzes for LEFT SIDEBAR
     const solvedQuizzes = await QuizzesAnswers.find({ userId })
-      .select("quizId title score createdAt")
+      .select("quizId title score createdAt timeTaken")
       .sort({ createdAt: -1 });
 
     const solvedFormatted = solvedQuizzes.map((q) => ({
@@ -180,6 +181,7 @@ const getQuizAnswersByQuizId = async (req, res, next) => {
       title: q.title,
       score: q.score,
       createdAt: q.createdAt,
+      timeTaken: q.timeTaken ?? null,
     }));
 
     // 4️⃣ Final response
@@ -192,6 +194,7 @@ const getQuizAnswersByQuizId = async (req, res, next) => {
         questions: mergedQuestions,
         solvedQuizzes: solvedFormatted, // ✅ USED BY FRONTEND
         createdAt: quizAnswer.createdAt,
+        timeTaken: quizAnswer.timeTaken ?? null,
       },
     });
   } catch (err) {
@@ -235,10 +238,14 @@ const addQuizAnswersByUserId = async (req, res, next) => {
       : 1; // avoid divide by 0
     const percentageScore = Math.round((rawScore / totalQuestions) * 100);
 
-    // attach userId, quiz title, save percentage
+    // attach userId, quiz title, save percentage and timeTaken
     quizAnswers.userId = userId;
     quizAnswers.title = quiz.title;
     quizAnswers.score = percentageScore;
+    // accept timeTaken in seconds
+    if (quizAnswers.timeTaken !== undefined && quizAnswers.timeTaken !== null) {
+      quizAnswers.timeTaken = Number(quizAnswers.timeTaken) || 0;
+    }
     delete quizAnswers._id;
     delete quizAnswers.__v;
 
@@ -254,7 +261,7 @@ const addQuizAnswersByUserId = async (req, res, next) => {
 
     res
       .status(201)
-      .json({ success: true, msg: "Quiz answers saved successfully" });
+      .json({ success: true, msg: "Quiz answers saved successfully", data: {_id: createdQuizAnswers._id} });
   } catch (err) {
     next(err);
   }

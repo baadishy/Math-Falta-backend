@@ -18,7 +18,7 @@ function normalizeAnswer(ans) {
 const getAllQuizzes = async (req, res, next) => {
   try {
     const quizzes = await Quizzes.find({ isDeleted: false }).select(
-      "title grade updatedAt",
+      "title grade updatedAt timeLimit",
     );
     res.status(200).json({ success: true, data: quizzes });
   } catch (error) {
@@ -111,6 +111,7 @@ const getQuizById = async (req, res, next) => {
               in: {
                 score: "$$a.score",
                 createdAt: "$$a.createdAt",
+                timeTaken: "$$a.timeTaken",
                 user: {
                   $arrayElemAt: [
                     {
@@ -161,6 +162,7 @@ const getQuizById = async (req, res, next) => {
           isPublished: 1,
           createdAt: 1,
           updatedAt: 1,
+          timeLimit: 1,
           questions: 1,
 
           questionsCount: 1,
@@ -171,6 +173,7 @@ const getQuizById = async (req, res, next) => {
           detailedResults: {
             score: 1,
             createdAt: 1,
+            timeTaken: 1,
             "user._id": 1,
             "user.name": 1,
             "user.email": 1,
@@ -254,7 +257,7 @@ const getQuizAnswersById = async (req, res, next) => {
 /* ================= CREATE QUIZ ================= */
 const createQuiz = async (req, res, next) => {
   try {
-    const { title, grade, questions } = req.body;
+    const { title, grade, questions, timeLimit } = req.body;
     const imagesFiles = req.files;
 
     const parsedQuestions = JSON.parse(questions);
@@ -278,10 +281,15 @@ const createQuiz = async (req, res, next) => {
       };
     });
 
-    const quiz = new Quizzes({ title, grade, questions: questionsData });
+    const quiz = new Quizzes({
+      title,
+      grade,
+      questions: questionsData,
+      timeLimit: Number(timeLimit) || 0,
+    });
     await quiz.save();
 
-    res.status(201).json({ success: true,  msg: "Quiz created successfully"});
+    res.status(201).json({ success: true, msg: "Quiz created successfully" });
   } catch (error) {
     next(error);
   }
@@ -291,7 +299,7 @@ const createQuiz = async (req, res, next) => {
 const updateQuizById = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { title, grade } = req.body;
+    const { title, grade, timeLimit } = req.body;
 
     const quiz = await Quizzes.findOne({ _id: id, isDeleted: false });
     if (!quiz)
@@ -301,6 +309,7 @@ const updateQuizById = async (req, res, next) => {
 
     if (title) quiz.title = title;
     if (grade) quiz.grade = grade;
+    if (timeLimit !== undefined) quiz.timeLimit = Number(timeLimit) || 0;
 
     await quiz.save();
     res.status(200).json({ success: true, data: quiz });
