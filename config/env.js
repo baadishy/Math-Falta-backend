@@ -2,7 +2,7 @@ const { config } = require("dotenv");
 
 // Load .env only for local development. In production (Render) rely on real env vars.
 if (process.env.NODE_ENV !== "production") {
-  config();
+  config({path: ".env.development.local"});
 }
 
 const {

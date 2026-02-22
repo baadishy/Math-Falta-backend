@@ -52,35 +52,17 @@ const quizzesAnswersSchema = new mongoose.Schema(
 
 quizzesAnswersSchema.pre("save", async function () {
   try {
-    const quiz = await Quizzes.findById(this.quizId);
+    // We only need to validate the answers format,
+    // score and isCorrect are calculated in the controller
     const validAnswers = ["A", "B", "C", "D"];
-    let score = 0;
-
-    if (!quiz) {
-      throw new Error("Quiz not found");
-    }
 
     this.questions.forEach((answeredQuestion) => {
-      const originalQuestion = quiz.questions.id(answeredQuestion.questionId);
-
       if (!validAnswers.includes(answeredQuestion.userAnswer)) {
         throw new Error(
           `Invalid answer '${answeredQuestion.userAnswer}' for question ID ${answeredQuestion.questionId}`,
         );
       }
-
-      if (
-        originalQuestion &&
-        originalQuestion.answer === answeredQuestion.userAnswer
-      ) {
-        answeredQuestion.isCorrect = true;
-        score += 1;
-      } else {
-        answeredQuestion.isCorrect = false;
-      }
     });
-
-    this.score = score;
   } catch (error) {
     throw error;
   }

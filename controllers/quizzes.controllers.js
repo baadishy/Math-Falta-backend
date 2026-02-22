@@ -205,7 +205,7 @@ const getQuizAnswersByQuizId = async (req, res, next) => {
 const addQuizAnswersByUserId = async (req, res, next) => {
   try {
     const userId = req.user._id;
-    const quizAnswers = req.body;
+    const quizAnswers = req.body; // { quizId, questions: [{ questionId, userAnswer }], timeTaken }
 
     if (!userId)
       return res
@@ -225,32 +225,53 @@ const addQuizAnswersByUserId = async (req, res, next) => {
         .status(400)
         .json({ success: false, msg: "quizId is required in body" });
 
-    // attach title from DB for reference
-    const quiz = await Quizzes.findById(quizAnswers.quizId).select("title");
+    // 1. Fetch the full quiz with correct answers
+    const quiz = await Quizzes.findById(quizAnswers.quizId);
     if (!quiz)
       return res.status(404).json({ success: false, msg: "Quiz not found" });
 
-    const rawScore = quizAnswers.score ?? 0;
+    let score = 0;
+    const submittedQuestions = quizAnswers.questions || [];
 
-    // ✅ calculate percentage based on number of answers submitted
-    const totalQuestions = Array.isArray(quizAnswers.answers)
-      ? quizAnswers.questions.length
-      : 1; // avoid divide by 0
-    const percentageScore = Math.round((rawScore / totalQuestions) * 100);
+    // 2. Server-side score calculation
+    submittedQuestions.forEach((answeredQuestion) => {
+      const originalQuestion = quiz.questions.id(answeredQuestion.questionId);
+      if (
+        originalQuestion &&
+        originalQuestion.answer === answeredQuestion.userAnswer
+      ) {
+        score += 1;
+      }
+    });
 
-    // attach userId, quiz title, save percentage and timeTaken
-    quizAnswers.userId = userId;
-    quizAnswers.title = quiz.title;
-    quizAnswers.score = percentageScore;
-    // accept timeTaken in seconds
-    if (quizAnswers.timeTaken !== undefined && quizAnswers.timeTaken !== null) {
-      quizAnswers.timeTaken = Number(quizAnswers.timeTaken) || 0;
-    }
-    delete quizAnswers._id;
-    delete quizAnswers.__v;
+    // 3. Calculate percentage
+    const totalQuestions = quiz.questions.length;
+    const percentageScore =
+      totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0;
 
-    const createdQuizAnswers = await QuizzesAnswers.create(quizAnswers);
+    // 4. Prepare data for saving
+    const quizAttempt = {
+      userId,
+      quizId: quiz.id,
+      title: quiz.title,
+      score: score,
+      questions: submittedQuestions.map((q) => {
+        const originalQuestion = quiz.questions.id(q.questionId);
+        return {
+          questionId: q.questionId,
+          userAnswer: q.userAnswer,
+          isCorrect: originalQuestion
+            ? originalQuestion.answer === q.userAnswer
+            : false,
+        };
+      }),
+      timeTaken: Number(quizAnswers.timeTaken) || 0,
+    };
 
+    // 5. Save the attempt
+    const createdQuizAnswers = await QuizzesAnswers.create(quizAttempt);
+
+    // 6. Log activity
     await Activites.create({
       userId,
       activityId: createdQuizAnswers._id,
@@ -259,9 +280,12 @@ const addQuizAnswersByUserId = async (req, res, next) => {
       score: percentageScore,
     });
 
-    res
-      .status(201)
-      .json({ success: true, msg: "Quiz answers saved successfully", data: {_id: createdQuizAnswers._id} });
+    // 7. Respond
+    res.status(201).json({
+      success: true,
+      msg: "Quiz answers saved successfully",
+      data: { _id: createdQuizAnswers._id },
+    });
   } catch (err) {
     next(err);
   }
