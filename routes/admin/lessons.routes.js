@@ -2,7 +2,10 @@ const express = require("express");
 const router = express.Router();
 const authMiddleware = require("../../middlewares/auth.middleware");
 const adminMiddleware = require("../../middlewares/admin.middleware");
-const uploadDocs = require("../../utils/upload-docs");
+const {
+  uploadDocs,
+  uploadToCloud,
+} = require("../../utils/uploader.js");
 const {
   getAllLessons,
   getLessonById,
@@ -22,14 +25,14 @@ router.use(authMiddleware, adminMiddleware);
 
 /* ================= LESSON ROUTES ================= */
 router.get("/", getAllLessons); // Get all lessons
-router.post("/", uploadDocs, createLesson); // Create lesson
+router.post("/", [uploadDocs, uploadToCloud], createLesson); // Create lesson
 // Static trash route before parameterized routes to avoid being matched by "/:id"
 router.get("/trash", getDeletedLessons); // Get all soft-deleted lessons
 router.get("/:id", getLessonById); // Get lesson by ID
 router.put("/:id", updateLessonById); // Update lesson fields (text/video)
 
 /* ================= DOCS PARTIAL ROUTES ================= */
-router.post("/:id/docs", uploadDocs, addLessonDocs); // Add new docs
+router.post("/:id/docs", [uploadDocs, uploadToCloud], addLessonDocs); // Add new docs
 router.delete("/:lessonId/docs/:docId", deleteLessonDoc); // Delete ONE doc
 router.put("/:lessonId/docs/:docId", updateLessonDocLabel); // Update doc label
 

@@ -9,7 +9,7 @@ const autoTable = require("jspdf-autotable");
 const axios = require("axios");
 const FormData = require("form-data");
 const cloudinary = require("../../config/cloudinary");
-const uploadDocs = require("../../utils/upload-docs");
+const uploader = require("../../utils/uploader.js");
 const Reports = require("../../models/reports.model");
 const fs = require("fs");
 const path = require("path");
@@ -611,19 +611,21 @@ const uploadQuizReport = async (req, res, next) => {
         .json({ success: false, message: "User ID is required" });
     }
 
-    const files = req.files?.docs || [];
+    const files = req.uploadedDocs || [];
     if (!files.length) {
       return res
         .status(400)
         .json({ success: false, message: "No file uploaded" });
     }
 
-    // return the first uploaded file info (Cloudinary provides .path and .filename)
-    const file = files[0];
+    // return the first uploaded file info
+    const doc = files[0];
+    const isImageKit = doc.provider === "imagekit";
     const fileInfo = {
-      url: file.path || file.location || file.secure_url || null,
-      publicId: file.filename || file.public_id || null,
-      originalName: file.originalname || file.originalName || null,
+      url: isImageKit ? doc.url : doc.secure_url,
+      publicId: isImageKit ? doc.fileId : doc.public_id,
+      originalName: doc.originalname,
+      provider: doc.provider,
     };
 
     return res.status(200).json({ success: true, data: fileInfo });
@@ -901,7 +903,7 @@ const generateQuizReport = async (req, res, next) => {
     // Convert SVG to buffer and upload as image/svg+xml
     const buffer = Buffer.from(svg);
 
-    const uploadResp = await uploadDocs.uploadFile(buffer, {
+    const uploadResp = await uploader.uploadFile(buffer, {
       folder: "math-falta/reports",
       resource_type: "image",
       public_id: `${id}-${quizId}-${Date.now()}`,

@@ -1,7 +1,33 @@
 const Lessons = require("../../models/lessons.model");
 const Users = require("../../models/users.model");
 const cloudinary = require("../../config/cloudinary");
+const imagekit = require("../../config/imagekit");
 const extractYouTubeVideoId = require("../../utils/extract-video-id");
+
+function inferProviderFromDoc(doc = {}) {
+  if (doc.provider === "cloudinary" || doc.provider === "imagekit") {
+    return doc.provider;
+  }
+
+  const url = String(doc.url || doc.secure_url || "");
+  if (url.includes("imagekit.io")) {
+    return "imagekit";
+  }
+
+  return "cloudinary";
+}
+
+function normalizeLessonDocsProviders(lesson) {
+  if (!lesson || !Array.isArray(lesson.docs)) {
+    return;
+  }
+
+  for (const doc of lesson.docs) {
+    if (!doc.provider) {
+      doc.provider = inferProviderFromDoc(doc);
+    }
+  }
+}
 
 /* ================= GET ALL LESSONS ================= */
 const getAllLessons = async (req, res, next) => {
@@ -77,7 +103,6 @@ const getLessonById = async (req, res, next) => {
 const createLesson = async (req, res, next) => {
   try {
     const { title, topic, grade, video, labels } = req.body;
-    const docs = req.files?.docs || [];
 
     if (!title || !topic || !grade || !video) {
       return res.status(400).json({
@@ -95,12 +120,17 @@ const createLesson = async (req, res, next) => {
       }
     }
 
-    const lessonDocs = docs.map((doc, i) => ({
-      url: doc.path,
-      publicId: doc.filename,
-      originalName: doc.originalname,
-      label: parsedLabels[i] || null,
-    }));
+    const lessonDocs = (req.uploadedDocs || []).map((doc, i) => {
+      const provider = inferProviderFromDoc(doc);
+      const isImageKit = provider === "imagekit";
+      return {
+        url: isImageKit ? doc.url : doc.secure_url,
+        publicId: isImageKit ? doc.fileId : doc.public_id,
+        originalName: doc.originalname,
+        label: parsedLabels[i] || null,
+        provider,
+      };
+    });
 
     const videoId = extractYouTubeVideoId(video);
     if (!videoId) {
@@ -155,6 +185,7 @@ const updateLessonById = async (req, res, next) => {
       lesson.videoUrl = "https://www.youtube.com/embed/" + videoId;
     }
 
+    normalizeLessonDocsProviders(lesson);
     await lesson.save();
 
     res.status(200).json({ success: true, data: lesson });
@@ -186,13 +217,19 @@ const addLessonDocs = async (req, res, next) => {
       }
     }
 
-    const newDocs = req.files.docs.map((file, i) => ({
-      url: file.path,
-      publicId: file.filename,
-      originalName: file.originalname,
-      label: parsedLabels[i] || null,
-    }));
+    const newDocs = (req.uploadedDocs || []).map((doc, i) => {
+      const provider = inferProviderFromDoc(doc);
+      const isImageKit = provider === "imagekit";
+      return {
+        url: isImageKit ? doc.url : doc.secure_url,
+        publicId: isImageKit ? doc.fileId : doc.public_id,
+        originalName: doc.originalname,
+        label: parsedLabels[i] || null,
+        provider,
+      };
+    });
 
+    normalizeLessonDocsProviders(lesson);
     lesson.docs.push(...newDocs);
     await lesson.save();
 
@@ -223,11 +260,17 @@ const deleteLessonDoc = async (req, res, next) => {
       });
     }
 
-    await cloudinary.uploader.destroy(doc.publicId, {
-      resource_type: "raw",
-    });
+    const provider = inferProviderFromDoc(doc);
+    if (provider === "imagekit") {
+      await imagekit.deleteFile(doc.publicId);
+    } else {
+      await cloudinary.uploader.destroy(doc.publicId, {
+        resource_type: "raw",
+      });
+    }
 
     lesson.docs = lesson.docs.filter((d) => d._id.toString() !== docId);
+    normalizeLessonDocsProviders(lesson);
     await lesson.save();
 
     res.status(200).json({
@@ -256,6 +299,7 @@ const updateLessonDocLabel = async (req, res, next) => {
     }
 
     doc.label = label;
+    normalizeLessonDocsProviders(lesson);
     await lesson.save();
 
     res.status(200).json({
@@ -281,9 +325,13 @@ const deleteLessonById = async (req, res, next) => {
     }
 
     for (const doc of lesson.docs) {
-      await cloudinary.uploader.destroy(doc.publicId, {
-        resource_type: "raw",
-      });
+      if (doc.provider === "imagekit") {
+        await imagekit.deleteFile(doc.publicId);
+      } else {
+        await cloudinary.uploader.destroy(doc.publicId, {
+          resource_type: "raw",
+        });
+      }
     }
 
     await Lessons.findByIdAndDelete(id);
@@ -312,6 +360,7 @@ const softDeleteLessonById = async (req, res, next) => {
     lesson.isDeleted = true;
     lesson.deletedAt = new Date();
 
+    normalizeLessonDocsProviders(lesson);
     await lesson.save();
 
     res.status(200).json({
@@ -338,6 +387,7 @@ const restoreLessonById = async (req, res, next) => {
     lesson.isDeleted = false;
     lesson.deletedAt = null;
 
+    normalizeLessonDocsProviders(lesson);
     await lesson.save();
 
     res.status(200).json({

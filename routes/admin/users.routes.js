@@ -14,7 +14,10 @@ const {
   sendQuizReportDirect,
   getUserReports,
 } = require("../../controllers/admin/users.controllers");
-const uploadDocs = require("../../utils/upload-docs");
+const {
+  uploadDocs,
+  uploadToCloud,
+} = require("../../utils/uploader.js");
 const uploadMemory = require("../../utils/upload-memory");
 
 router.use(authMiddleware, adminMiddleware);
@@ -24,7 +27,7 @@ router.get("/export", exportUsers);
 router.get("/:id", getUserById);
 router.put("/:id", updateUserById);
 router.delete("/:id", deleteUserById);
-router.post("/:id/report", uploadDocs, uploadQuizReport);
+router.post("/:id/report", [uploadDocs, uploadToCloud], uploadQuizReport);
 router.post("/:id/report/generate", generateQuizReport);
 router.get("/:id/reports", getUserReports);
 router.post("/:id/report/send", sendQuizReport);

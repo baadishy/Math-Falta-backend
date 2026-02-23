@@ -53,13 +53,17 @@ const lessonsSchema = new mongoose.Schema(
           },
           label: {
             type: String,
-            required: true,
             trim: true,
           },
           originalName: {
             type: String,
             trim: true,
             required: true,
+          },
+          provider: {
+            type: String,
+            required: true,
+            enum: ["cloudinary", "imagekit"],
           },
         },
       ],
