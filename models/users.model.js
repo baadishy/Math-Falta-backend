@@ -45,6 +45,27 @@ const usersSchema = new mongoose.Schema(
       trim: true,
       match: [/^(5|6|7|8|9)$/, "Grade must be between 5 and 9"],
     },
+    approvalStatus: {
+      type: String,
+      enum: ["pending", "approved", "rejected"],
+      default: "approved",
+      index: true,
+    },
+    approvalReviewedAt: {
+      type: Date,
+      default: null,
+    },
+    approvalReviewedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Admins",
+      default: null,
+    },
+    approvalNote: {
+      type: String,
+      trim: true,
+      default: "",
+      maxlength: 300,
+    },
     lessonsCompleted: {
       type: [
         {

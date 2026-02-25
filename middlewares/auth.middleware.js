@@ -17,6 +17,14 @@ const authMiddleware = async (req, res, next) => {
     if (!user) {
       user = await Admins.findById(decoded.id).select("-password");
       if (!user) return res.status(401).json({ success: false, msg: "Unauthorized" });
+    } else if (user.approvalStatus !== "approved") {
+      return res.status(403).json({
+        success: false,
+        msg:
+          user.approvalStatus === "pending"
+            ? "Your account is pending admin approval."
+            : "Your account is not approved.",
+      });
     }
 
     req.user = user;

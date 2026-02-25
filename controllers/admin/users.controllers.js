@@ -27,9 +27,87 @@ const {
   WHATSAPP_TOKEN,
 } = require("../../config/env");
 
+function toObjectIdOrNull(value) {
+  if (!value) return null;
+  return mongoose.Types.ObjectId.isValid(value)
+    ? new mongoose.Types.ObjectId(value)
+    : null;
+}
+
+const getPendingApprovals = async (req, res, next) => {
+  try {
+    const pendingUsers = await Users.find({ approvalStatus: "pending" })
+      .select("name email parentNumber grade createdAt approvalStatus")
+      .sort({ createdAt: -1 })
+      .lean();
+
+    return res.status(200).json({
+      success: true,
+      count: pendingUsers.length,
+      data: pendingUsers,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const approveUser = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const updated = await Users.findByIdAndUpdate(
+      id,
+      {
+        approvalStatus: "approved",
+        approvalReviewedAt: new Date(),
+        approvalReviewedBy: toObjectIdOrNull(req.user?._id),
+        approvalNote: "",
+      },
+      { new: true, runValidators: true },
+    ).select("name email approvalStatus approvalReviewedAt");
+
+    if (!updated) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "User approved successfully",
+      data: updated,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const rejectUser = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const deleted = await Users.findByIdAndDelete(id);
+    if (!deleted) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "User rejected successfully",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const getAllUsers = async (req, res, next) => {
   try {
     const users = await Users.aggregate([
+      {
+        $match: { approvalStatus: { $nin: ["pending", "rejected"] } },
+      },
       {
         $lookup: {
           from: "quizzesanswers", // collection name (mongoose plural)
@@ -67,7 +145,10 @@ const getUserById = async (req, res, next) => {
     const user = await Users.aggregate([
       // 1️⃣ Match user
       {
-        $match: { _id: new mongoose.Types.ObjectId(id) },
+        $match: {
+          _id: new mongoose.Types.ObjectId(id),
+          approvalStatus: { $nin: ["pending", "rejected"] },
+        },
       },
 
       // 2️⃣ Get quiz attempts by user
@@ -364,6 +445,7 @@ const exportUsers = async (req, res, next) => {
         $options: "i",
       };
     }
+    matchStage.approvalStatus = { $nin: ["pending", "rejected"] };
 
     // ===== Aggregation =====
     const users = await Users.aggregate([
@@ -1197,6 +1279,9 @@ const sendQuizReportDirect = async (req, res, next) => {
 };
 
 module.exports = {
+  getPendingApprovals,
+  approveUser,
+  rejectUser,
   getAllUsers,
   getUserById,
   updateUserById,

@@ -1,6 +1,8 @@
 const Quizzes = require("../../models/quizzes.model");
 const QuizzesAnswers = require("../../models/quizzes-answers.model");
+const Activities = require("../../models/activites.model");
 const cloudinary = require("../../config/cloudinary");
+const mongoose = require("mongoose");
 
 // Normalize answers so they are stored as letters 'A'..'D'
 function normalizeAnswer(ans) {
@@ -435,27 +437,57 @@ const deleteQuizQuestion = async (req, res, next) => {
 
 /* ================= DELETE QUIZ ================= */
 const deleteQuizById = async (req, res, next) => {
+  const session = await mongoose.startSession();
+
   try {
     const { id } = req.params;
 
-    const quiz = await Quizzes.findById(id);
-    if (!quiz)
+    session.startTransaction();
+
+    // 1️⃣ Find quiz inside transaction
+    const quiz = await Quizzes.findById(id).session(session);
+
+    if (!quiz) {
+      await session.abortTransaction();
       return res
         .status(404)
         .json({ success: false, message: "Quiz not found" });
-
-    for (const q of quiz.questions) {
-      if (q.image?.publicId) {
-        await cloudinary.uploader.destroy(q.image.publicId);
-      }
     }
 
-    await Quizzes.findByIdAndDelete(id);
-    res.status(200).json({ success: true, message: "Quiz deleted" });
+    // 2️⃣ Delete related quiz answers
+    await QuizzesAnswers.deleteMany({ quizId: id }).session(session);
+
+    // Delete quiz activity
+    await Activities.deleteMany({ ActivityType: "quiz", ActivityId: id, userId: quiz.userId}).session(session);
+
+    // 3️⃣ Delete quiz
+    await Quizzes.findByIdAndDelete(id).session(session);
+
+    // 4️⃣ Commit transaction (DB is now safe)
+    await session.commitTransaction();
+
+    // 5️⃣ Delete images AFTER commit (optimized parallel deletion)
+    const imagesToDelete = quiz.questions
+      ?.filter((q) => q.image?.publicId)
+      .map((q) => cloudinary.uploader.destroy(q.image.publicId));
+
+    if (imagesToDelete?.length) {
+      await Promise.all(imagesToDelete);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Quiz and related answers deleted successfully",
+    });
+
   } catch (error) {
+    await session.abortTransaction();
     next(error);
+  } finally {
+    session.endSession(); // always close session safely
   }
 };
+
 
 const softDeleteQuizById = async (req, res, next) => {
   try {

@@ -66,15 +66,17 @@ const getAdminDashboard = async (req, res, next) => {
   try {
     // Example: Fetch some dashboard data
     const dashboardData = {
-  totalUsers: await Users.countDocuments(),
+      totalUsers: await Users.countDocuments({ approvalStatus: { $nin: ["rejected", "pending"] } }),
 
-  totalLessons: await Lessons.countDocuments({ isDeleted: { $ne: true } }),
+      totalLessons: await Lessons.countDocuments({ isDeleted: { $ne: true } }),
 
-  totalQuizzes: await Quizzes.countDocuments({ isDeleted: { $ne: true } }),
-};
+      totalQuizzes: await Quizzes.countDocuments({ isDeleted: { $ne: true } }),
+    };
 
-    
-    const lessons = await Lessons.find({isDeleted: false}).select("title _id createdAt updatedAt").limit(4).sort({ createdAt: -1 });
+    const lessons = await Lessons.find({ isDeleted: false })
+      .select("title _id createdAt updatedAt")
+      .limit(4)
+      .sort({ createdAt: -1 });
     const quizzes = await Quizzes.aggregate([
       // sort by last update (important for dashboard)
       { $sort: { updatedAt: -1 } },
@@ -136,7 +138,7 @@ const getAdminDashboard = async (req, res, next) => {
                 score: 1,
               },
             },
-          ],  
+          ],
           as: "quizzes",
         },
       },
@@ -168,7 +170,7 @@ const getAdminDashboard = async (req, res, next) => {
   } catch (error) {
     next(error);
   }
-}
+};
 
 module.exports = {
   getCurrentAdmin,

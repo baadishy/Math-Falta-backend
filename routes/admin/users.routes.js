@@ -3,6 +3,9 @@ const router = express.Router();
 const authMiddleware = require("../../middlewares/auth.middleware");
 const adminMiddleware = require("../../middlewares/admin.middleware");
 const {
+  getPendingApprovals,
+  approveUser,
+  rejectUser,
   getAllUsers,
   getUserById,
   updateUserById,
@@ -21,6 +24,10 @@ const {
 const uploadMemory = require("../../utils/upload-memory");
 
 router.use(authMiddleware, adminMiddleware);
+
+router.get("/approvals/pending", getPendingApprovals);
+router.patch("/approvals/:id/approve", approveUser);
+router.patch("/approvals/:id/reject", rejectUser);
 
 router.get("/", getAllUsers);
 router.get("/export", exportUsers);

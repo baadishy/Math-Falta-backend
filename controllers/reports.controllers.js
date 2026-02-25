@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const Reports = require("../models/reports.model");
+const { FRONTEND_URL } = require("../config/env");
 
 // GET /r/:reportId
 exports.redirectReport = async (req, res, next) => {
@@ -20,7 +21,7 @@ exports.redirectReport = async (req, res, next) => {
     }
 
     // Redirect to the stored URL
-    return res.redirect(`http://localhost:3000/view-report.html?url=${encodeURIComponent(report.url)}`);
+    return res.redirect(`${FRONTEND_URL || "https://math-falta.vercel.app"}/view-report.html?url=${encodeURIComponent(report.url)}`);
   } catch (err) {
     next(err);
   }
